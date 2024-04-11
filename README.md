@@ -1,10 +1,10 @@
 # Spotify Recommender Systems Master's Research Project
 
-Welcome to the GitHub repository for my Master's research project on Spotify and how its recommender systems work. This project delves into the intricate world of music recommendation algorithms, focusing specifically on Spotify's platform. 
+Welcome to the GitHub repository for my Master's research project on Spotify and how recommender systems work in general. This project delves into the intricate world of music recommendation algorithms, focusing specifically on Spotify's platform. 
 
 ## Overview
 
-In the era of digital streaming, platforms like Spotify play a crucial role in shaping users' music consumption experiences. Recommender systems are at the heart of these platforms, providing personalized recommendations to millions of users worldwide. Our research aims to enhance the understanding and effectiveness of Spotify's recommender systems.
+In the era of digital streaming, platforms like Spotify play a crucial role in shaping users' music consumption experiences. Recommender systems are at the heart of these platforms, providing personalised recommendations to millions of users worldwide. This research aims to enhance the understanding and effectiveness of Spotify's recommender systems.
 
 ## Objectives
 
