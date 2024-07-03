@@ -12,9 +12,16 @@ import matplotlib.pyplot as plt
 
 # Connect to the SQLite database
 
-db_track_path = r'C:\Users\resha\Documents\RESH\Data Science\Research Project\data\millionsongsubset\track_metadata.db'
-db_tag_path = r'C:\Users\resha\Documents\RESH\Data Science\Research Project\data\lastfm_tags.db'
-triplets_path = r"C:\Users\resha\Documents\RESH\Data Science\Research Project\data\train_triplets.txt"
+#db_track_path = r'C:\Users\resha\Documents\RESH\Data Science\Research Project\data\millionsongsubset\track_metadata.db'
+#db_tag_path = r'C:\Users\resha\Documents\RESH\Data Science\Research Project\data\lastfm_tags.db'
+#triplets_path = r"C:\Users\resha\Documents\RESH\Data Science\Research Project\data\train_triplets.txt"
+
+db_track_path = r'C:\Users\corc4\Downloads\track_metadata.db'
+db_tag_path = r'C:\Users\corc4\Downloads\lastfm_tags.db'
+triplets_path = r"C:\Users\corc4\Downloads\train_triplets.txt"
+genre_path = r'C:\Users\corc4\Downloads\msd-MAGD-genreAssignment.cls'
+# https://www.ifs.tuwien.ac.at/mir/msd/
+
 
 
 # Read the tab-delimited text file and add headers
@@ -57,25 +64,33 @@ print(lastfm_tags_df.head())  # Display the first few rows
 conn_tag.close()
 
 unique_tags_count = lastfm_tags_df['tag'].nunique() #522366
-
 lastfm_tags_df['tag_number'] = lastfm_tags_df.groupby('tid').cumcount() + 1
 lastfm_df = lastfm_tags_df.pivot(index='tid', columns='tag_number', values='tag').reset_index()
 lastfm_df.columns = ['tid'] + [f'tag{i}' for i in range(1, len(lastfm_df.columns))]
 
+# opening genre dataset and coverting to dataframe 
+
+genres_df = pd.read_csv(genre_path,delimiter="\t", header=None)
+genres_df.columns = ["track_id","genre"]
+print(genres_df)
 
 lastfm_df #all tags for each unique song nrow: 505216
 lastfm_tags_df # song list with tags that are not unique: 8598630
 track_metadata_df # all track metadata from millionsongdataset: 1000000
 train_triplets_df # triplets containing information about users and playcounts: 48373586
 play_count_grouped_df # play count for each song: 384546
+genres_df # genres with 422,714 labels
 
 # joining dataset 
 track_df = pd.merge(track_metadata_df, play_count_grouped_df, left_on='song_id', right_on='song').drop('song', axis=1)
+track_df = pd.merge(track_df, genres_df, how='inner', on='track_id')
+
 track_df = pd.merge(track_df, lastfm_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)
 
-track_df # nrow: 385256 columns: ['track_id', 'title', 'song_id', 'release', 'artist_id', 
-         #'artist_mbid', 'artist_name', 'duration', 'artist_familiarity', 'artist_hotttnesss', 'year', 'total_play_count', 'tag1'
+track_df # nrow: 385256 columns (with genre this goes down to 195002): ['track_id', 'title', 'song_id', 'release', 'artist_id', 
+         #'artist_mbid', 'artist_name', 'duration', 'artist_familiarity', 'artist_hotttnesss', 'year', 'total_play_count', 'tag1', "genre"]
 
+track_df.columns
 
 #filtered = track_df[track_df["year"]>0]["year"]
 #plays = track_df[track_df["total_play_count"]>0]
@@ -121,6 +136,8 @@ plt.yticks(fontsize=7)
 
 # Show plot
 plt.show()
+
+
 
 ########################## clustering tags ##################################
 
@@ -188,5 +205,5 @@ lastfm_tags_df
 
 len(lastfm_tags_df["tag"].unique()) # 505215 songs with 522366 unique tags
 
-
+"male", "female",""
 
