@@ -13,17 +13,18 @@ from pathlib import Path
 
 # Connect to the SQLite database
 
-db_track_path = r'C:\Users\resha\data\track_metadata.db'
-db_tag_path = r'C:\Users\resha\data\lastfm_tags.db'
-triplets_path = r'C:\Users\resha\data\train_triplets.txt'
-genre_path = r'C:\Users\resha\data\msd-MAGD-genreAssignment.cls'
-image_path = r'C:\Users\resha\data\MSD-I_dataset.tsv'
-#db_track_path = r'C:\Users\corc4\Downloads\track_metadata.db'
-#db_tag_path = r'C:\Users\corc4\Downloads\lastfm_tags.db'
-#triplets_path = r"C:\Users\corc4\Downloads\train_triplets.txt"
-#genre_path = r'C:\Users\corc4\Downloads\msd-MAGD-genreAssignment.cls'
-# https://www.ifs.tuwien.ac.at/mir/msd/
+#db_track_path = r'C:\Users\resha\data\track_metadata.db'
+#db_tag_path = r'C:\Users\resha\data\lastfm_tags.db'
+#triplets_path = r'C:\Users\resha\data\train_triplets.txt'
+#genre_path = r'C:\Users\resha\data\msd-MAGD-genreAssignment.cls'
+#image_path = r'C:\Users\resha\data\MSD-I_dataset.tsv'
+db_track_path = r'C:\Users\corc4\Downloads\track_metadata.db'
+db_tag_path = r'C:\Users\corc4\Downloads\lastfm_tags.db'
+triplets_path = r"C:\Users\corc4\Downloads\train_triplets.txt"
+genre_path = r'C:\Users\corc4\Downloads\msd-MAGD-genreAssignment.cls'
+image_path = r'C:\Users\corc4\Downloads\MSD-I_dataset.tsv'
 
+# https://www.ifs.tuwien.ac.at/mir/msd/
 
 
 # Read the tab-delimited text file and add headers
@@ -32,7 +33,15 @@ print(train_triplets_df.head())
 play_count_grouped_df = train_triplets_df.groupby('song', as_index=False)['play_count'].sum().rename(columns={'play_count': 'total_play_count'})
 play_count_grouped_df = play_count_grouped_df.sort_values(by='total_play_count', ascending=False)
 
-# images:
+# housekeeping
+train_triplets_df
+train_triplets_df.columns 
+# unique tracks
+len(pd.unique(train_triplets_df['track_id']))
+print(train_triplets_df.isnull().sum().sum())
+
+
+# Read the image dataset:
 images_df = pd.read_csv(image_path, sep='\t')
 images_df.head()
 
@@ -40,10 +49,10 @@ images_df.head()
 # Function to download an image from a URL
 def download_image(url, path):
     try:
-        response = requests.get(url, stream=True, timeout=10)  # Added timeout
-        response.raise_for_status()  # Raises an HTTPError for bad responses
+        response = requests.get(url, stream=True, timeout=10)  # timeout added
+        response.raise_for_status()  # Raises an HTTPError 
         with open(path, 'wb') as file:
-            for chunk in response.iter_content(1024):
+            for chunk in response.iter_content(1024): 
                 file.write(chunk)
     except requests.exceptions.HTTPError as http_err:
         print(f"HTTP error occurred while downloading {url}: {http_err}")
@@ -57,8 +66,8 @@ def download_image(url, path):
         print(f"An unexpected error occurred while downloading {url}: {e}")
 
 # Base directory for the images 
-base_dir = 'C:\Users\resha\images'
-
+#base_dir = 'C:\Users\resha\images'
+base_dir = r'C:\Users\corc4\Downloads\images'
 # Set to keep track of downloaded URLs
 downloaded_urls = set()
 
@@ -68,7 +77,7 @@ for index, row in images_df.iterrows():
     genre = row['genre']
     url = row['image_url']
     
-    # Check if the URL has already been downloaded
+    # Check if the URL has already been downloaded - skips the duplicates
     if url in downloaded_urls:
         print(f"Skipping already downloaded URL: {url}")
         continue
@@ -105,6 +114,14 @@ print(track_metadata_df.head())  # Display the first few rows
 c.close()
 conn.close()
 
+# housekeeping
+track_metadata_df
+track_metadata_df.columns 
+# unique tracks
+len(pd.unique(track_metadata_df['track_id']))
+print(track_metadata_df.isnull().sum().sum())
+
+
 # Connect to the lastfm_tags SQLite database
 conn_tag = sqlite3.connect(db_tag_path)
 
@@ -122,7 +139,11 @@ print(lastfm_tags_df.head())  # Display the first few rows
 
 conn_tag.close()
 
+# housekeeping
 unique_tags_count = lastfm_tags_df['tag'].nunique() #522366
+unique_track_count = len(pd.unique(lastfm_tags_df['tid']))
+print(lastfm_tags_df.isnull().sum().sum())
+
 lastfm_tags_df['tag_number'] = lastfm_tags_df.groupby('tid').cumcount() + 1
 lastfm_df = lastfm_tags_df.pivot(index='tid', columns='tag_number', values='tag').reset_index()
 lastfm_df.columns = ['tid'] + [f'tag{i}' for i in range(1, len(lastfm_df.columns))]
