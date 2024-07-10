@@ -10,19 +10,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import requests
 from pathlib import Path
+from thefuzz import fuzz
 
-# Connect to the SQLite database
-
-#db_track_path = r'C:\Users\resha\data\track_metadata.db'
-#db_tag_path = r'C:\Users\resha\data\lastfm_tags.db'
-#triplets_path = r'C:\Users\resha\data\train_triplets.txt'
-#genre_path = r'C:\Users\resha\data\msd-MAGD-genreAssignment.cls'
-#image_path = r'C:\Users\resha\data\MSD-I_dataset.tsv'
-db_track_path = r'C:\Users\corc4\Downloads\track_metadata.db'
-db_tag_path = r'C:\Users\corc4\Downloads\lastfm_tags.db'
-triplets_path = r"C:\Users\corc4\Downloads\train_triplets.txt"
-genre_path = r'C:\Users\corc4\Downloads\msd-MAGD-genreAssignment.cls'
-image_path = r'C:\Users\corc4\Downloads\MSD-I_dataset.tsv'
+db_track_path = r'C:\Users\resha\data\track_metadata.db'
+db_tag_path = r'C:\Users\resha\data\lastfm_tags.db'
+triplets_path = r'C:\Users\resha\data\train_triplets.txt'
+genre_path = r'C:\Users\resha\data\msd-MAGD-genreAssignment.cls'
+image_path = r'C:\Users\resha\data\MSD-I_dataset.tsv'
+#db_track_path = r'C:\Users\corc4\Downloads\track_metadata.db'
+#db_tag_path = r'C:\Users\corc4\Downloads\lastfm_tags.db'
+#triplets_path = r"C:\Users\corc4\Downloads\train_triplets.txt"
+#genre_path = r'C:\Users\corc4\Downloads\msd-MAGD-genreAssignment.cls'
+#image_path = r'C:\Users\corc4\Downloads\MSD-I_dataset.tsv'
 
 # https://www.ifs.tuwien.ac.at/mir/msd/
 
@@ -44,6 +43,10 @@ print(train_triplets_df.isnull().sum().sum())
 # Read the image dataset:
 images_df = pd.read_csv(image_path, sep='\t')
 images_df.head()
+
+# housekeeping 
+print(images_df['genre'].value_counts())
+images_df['genre'].unique()
 
 
 # Function to download an image from a URL
@@ -67,7 +70,7 @@ def download_image(url, path):
 
 # Base directory for the images 
 #base_dir = 'C:\Users\resha\images'
-base_dir = r'C:\Users\corc4\Downloads\images'
+#base_dir = r'C:\Users\corc4\Downloads\images'
 # Set to keep track of downloaded URLs
 downloaded_urls = set()
 
@@ -97,7 +100,7 @@ for index, row in images_df.iterrows():
 
 print("Image download and organisation complete.")
 
-
+# code to covert the track metadata database into a pandas data frame
 # connect to the SQLite database
 conn = sqlite3.connect(db_track_path)
 # from that connection, get a cursor to do queries
@@ -121,7 +124,7 @@ track_metadata_df.columns
 len(pd.unique(track_metadata_df['track_id']))
 print(track_metadata_df.isnull().sum().sum())
 
-
+# converting last.fm tag dataset to a pandas datafram
 # Connect to the lastfm_tags SQLite database
 conn_tag = sqlite3.connect(db_tag_path)
 
@@ -143,10 +146,16 @@ conn_tag.close()
 unique_tags_count = lastfm_tags_df['tag'].nunique() #522366
 unique_track_count = len(pd.unique(lastfm_tags_df['tid']))
 print(lastfm_tags_df.isnull().sum().sum())
+# how many tags max does a songs have
+lastfm_tags_df.sort_values(by=['tag_number'])
 
+# pivoting tags 
 lastfm_tags_df['tag_number'] = lastfm_tags_df.groupby('tid').cumcount() + 1
 lastfm_df = lastfm_tags_df.pivot(index='tid', columns='tag_number', values='tag').reset_index()
 lastfm_df.columns = ['tid'] + [f'tag{i}' for i in range(1, len(lastfm_df.columns))]
+
+# extracting male/female artists and geographic 
+lastfm_df 
 
 # opening genre dataset and coverting to dataframe 
 
@@ -178,6 +187,12 @@ track_df2 # nrow: 385256 columns (with genre this goes down to 195002): ['track_
 
 track_df.to_csv(r"C:\Users\resha\research-project\data\track_df_genre1.csv")  
 track_df2.to_csv(r"C:\Users\resha\research-project\data\track_df_genre2.csv")  
+
+# housekeeping 
+
+print(track_df.isnull().sum().sum())
+print(track_df2.isnull().sum().sum())
+
 
 # test NANs and rows etc
 track_df.columns
