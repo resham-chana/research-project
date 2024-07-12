@@ -10,7 +10,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import requests
 from pathlib import Path
-from thefuzz import fuzz
 
 db_track_path = r'C:\Users\resha\data\track_metadata.db'
 db_tag_path = r'C:\Users\resha\data\lastfm_tags.db'
@@ -38,7 +37,6 @@ train_triplets_df.columns
 # unique tracks
 len(pd.unique(train_triplets_df['track_id']))
 print(train_triplets_df.isnull().sum().sum())
-
 
 # Read the image dataset:
 images_df = pd.read_csv(image_path, sep='\t')
@@ -151,19 +149,19 @@ lastfm_tags_df.sort_values(by=['tag_number'])
 
 # pivoting tags 
 lastfm_tags_df['tag_number'] = lastfm_tags_df.groupby('tid').cumcount() + 1
-lastfm_df = lastfm_tags_df.pivot(index='tid', columns='tag_number', values='tag').reset_index()
-lastfm_df.columns = ['tid'] + [f'tag{i}' for i in range(1, len(lastfm_df.columns))]
+lastfm_pivot_df = lastfm_tags_df.pivot(index='tid', columns='tag_number', values='tag').reset_index()
+lastfm_pivot_df.columns = ['tid'] + [f'tag{i}' for i in range(1, len(lastfm_pivot_df.columns))]
 
-# extracting male/female artists and geographic 
-lastfm_df 
+# write csv
+lastfm_tags_df.to_csv(r"C:\Users\resha\data\lastfm_tags_df.csv")  
+lastfm_pivot_df.to_csv(r"C:\Users\resha\data\lastfm_pivot_df.csv")  
 
 # opening genre dataset and coverting to dataframe 
-
 genres_df1 = pd.read_csv(genre_path,delimiter="\t", header=None)
 genres_df1.columns = ["track_id","genre"]
 print(genres_df1)
 
-lastfm_df #all tags for each unique song nrow: 505216
+lastfm_pivot_df #all tags for each unique song nrow: 505216
 lastfm_tags_df # song list with tags that are not unique: 8598630
 track_metadata_df # all track metadata from millionsongdataset: 1000000
 train_triplets_df # triplets containing information about users and playcounts: 48373586
@@ -173,22 +171,22 @@ genres_df1 # genres with 422,714 labels
 # joining dataset 
 track_df = pd.merge(track_metadata_df, play_count_grouped_df, left_on='song_id', right_on='song').drop('song', axis=1)
 track_df = pd.merge(track_df, genres_df1, how='inner', on='track_id')
-track_df = pd.merge(track_df, lastfm_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)
+track_df = pd.merge(track_df, lastfm_pivot_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)
 
 track_df # nrow: 385256 columns (with genre this goes down to 195002): ['track_id', 'title', 'song_id', 'release', 'artist_id', 
          #'artist_mbid', 'artist_name', 'duration', 'artist_familiarity', 'artist_hotttnesss', 'year', 'total_play_count', 'tag1', "genre"]
 
 track_df2 = pd.merge(track_metadata_df, play_count_grouped_df, left_on='song_id', right_on='song').drop('song', axis=1)
 track_df2 = pd.merge(track_df, images_df, how='inner',  left_on='track_id', right_on='msd_track_id')
-track_df2 = pd.merge(track_df, lastfm_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)
+track_df2 = pd.merge(track_df, lastfm_pivot_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)
 
 track_df2 # nrow: 385256 columns (with genre this goes down to 195002): ['track_id', 'title', 'song_id', 'release', 'artist_id', 
          #'artist_mbid', 'artist_name', 'duration', 'artist_familiarity', 'artist_hotttnesss', 'year', 'total_play_count', 'tag1', "genre"]
 
-track_df.to_csv(r"C:\Users\resha\research-project\data\track_df_genre1.csv")  
-track_df2.to_csv(r"C:\Users\resha\research-project\data\track_df_genre2.csv")  
+track_df.to_csv(r"C:\Users\resha\data\track_df_genre1.csv")  
+track_df2.to_csv(r"C:\Users\resha\data\track_df_genre2.csv")  
 
-# housekeeping 
+# housekeeping NEED TO CARRY THIS ON 
 
 print(track_df.isnull().sum().sum())
 print(track_df2.isnull().sum().sum())
@@ -196,9 +194,6 @@ print(track_df2.isnull().sum().sum())
 
 # test NANs and rows etc
 track_df.columns
-
-#filtered = track_df[track_df["year"]>0]["year"]
-#plays = track_df[track_df["total_play_count"]>0]
 
 fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -217,98 +212,4 @@ ax.grid(True)
 plt.tight_layout()
 plt.show()
 
-##################################### TAG EXPLORATION ##################################################
-import seaborn as sns
-
-tag_counts = lastfm_tags_df["tag"].value_counts()
-
-# Convert to DataFrame for better handling in visualization
-tag_counts_df = tag_counts.reset_index()
-tag_counts_df.columns = ['tag', 'count']
-
-# Set the figure size
-plt.figure(figsize=(10, 8))
-
-# Create a bar plot
-sns.barplot(x='count', y='tag', data=tag_counts_df.head(100))  # Displaying top 20 tags for readability
-
-# Set plot title and labels
-plt.title('Top 100 Tags by Count')
-plt.xlabel('Count')
-plt.ylabel('Tag')
-
-plt.yticks(fontsize=7)
-
-# Show plot
-plt.show()
-
-
-
-########################## clustering tags ##################################
-
-import gensim.downloader as api
-from sklearn.metrics.pairwise import cosine_similarity
-
-
-glove_model = api.load("glove-wiki-gigaword-300")
-
-glove_model["beautiful"]
-
-lastfm_df
-
-def get_tag_vector(tag, model):
-    words = tag.split()
-    vectors = [model[word] for word in words if word in model]
-    if vectors:
-        return np.mean(vectors, axis=0)
-    else:
-        return None
-    
-tags = lastfm_df.iloc[:, 1:].stack().unique()  # Get unique tags, excluding NaNs
-tag_vectors = {}
-for tag in tags:
-    if pd.notna(tag):
-        vector = get_tag_vector(tag, glove_model)
-        if vector is not None:
-            tag_vectors[tag] = vector
-
-def compute_song_vector(tags, tag_vectors):
-    vectors = []
-    for tag in tags:
-        if tag in tag_vectors:
-            vectors.append(tag_vectors[tag])
-    if vectors:
-        return np.mean(vectors, axis=0)
-    else:
-        return np.zeros(len(next(iter(tag_vectors.values()))))
-
-lastfm_df['tags'] = lastfm_df.iloc[:, 1:].apply(lambda row: row.dropna().tolist(), axis=1)
-
-lastfm_df['song_vector'] = lastfm_df['tags'].apply(lambda tags: compute_song_vector(tags, tag_vectors))
-
-song_vectors = np.stack(lastfm_df['song_vector'].values)
-
-similarity_matrix = cosine_similarity(song_vectors)
-
-similarity_df = pd.DataFrame(similarity_matrix, index=lastfm_df['tid'], columns=lastfm_df['tid'])
-print(similarity_df)
-
-########################## getting genres ##################################
-
-# get most popular tags:
-
-tag_counts = lastfm_tags_df["tag"].value_counts()
-
-for tag in tag_counts[:1000].index:
-    print(tag)
-
-tag_counts.to_csv('tags.csv', index=True)
-
-lastfm_tags_df 
-
-# unique tags:
-
-len(lastfm_tags_df["tag"].unique()) # 505215 songs with 522366 unique tags
-
-#"male", "female",""
 
