@@ -4,10 +4,13 @@ import matplotlib
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+from thefuzz import process, fuzz
 
 # read processed lastfm tag datasets
-lastfmpath = r"C:\Users\resha\data\lastfm_tags_df.csv"
-pivot_path = r"C:\Users\resha\data\lastfm_pivot_df.csv"
+#lastfmpath = r"C:\Users\resha\data\lastfm_tags_df.csv"
+#pivot_path = r"C:\Users\resha\data\lastfm_pivot_df.csv"
+lastfmpath = r"C:\Users\corc4\data\lastfm_tags_df.csv"
+pivot_path = r"C:\Users\corc4\data\lastfm_pivot_df.csv"
 
 lastfm_tags_df = pd.read_csv(lastfmpath)
 lastfm_pivot_df = pd.read_csv(pivot_path)
@@ -35,7 +38,8 @@ ax.get_xaxis().set_major_formatter(
 labels = ax.bar_label(bar_container, fmt='{:,.0f}', color='white')
 for label in labels:
     label.set_fontsize(7)
-plt.savefig(r"C:\Users\resha\plots\popular_tags.png")
+#plt.savefig(r"C:\Users\resha\plots\popular_tags.png")
+plt.savefig(r"C:\Users\corc4\plots\popular_tags.png")
 
 plt.show()
 

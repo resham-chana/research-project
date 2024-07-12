@@ -16,11 +16,11 @@ db_tag_path = r'C:\Users\resha\data\lastfm_tags.db'
 triplets_path = r'C:\Users\resha\data\train_triplets.txt'
 genre_path = r'C:\Users\resha\data\msd-MAGD-genreAssignment.cls'
 image_path = r'C:\Users\resha\data\MSD-I_dataset.tsv'
-#db_track_path = r'C:\Users\corc4\Downloads\track_metadata.db'
-#db_tag_path = r'C:\Users\corc4\Downloads\lastfm_tags.db'
-#triplets_path = r"C:\Users\corc4\Downloads\train_triplets.txt"
-#genre_path = r'C:\Users\corc4\Downloads\msd-MAGD-genreAssignment.cls'
-#image_path = r'C:\Users\corc4\Downloads\MSD-I_dataset.tsv'
+db_track_path = r'C:\Users\corc4\Downloads\track_metadata.db'
+db_tag_path = r'C:\Users\corc4\Downloads\lastfm_tags.db'
+triplets_path = r"C:\Users\corc4\Downloads\train_triplets.txt"
+genre_path = r'C:\Users\corc4\Downloads\msd-MAGD-genreAssignment.cls'
+image_path = r'C:\Users\corc4\Downloads\MSD-I_dataset.tsv'
 
 # https://www.ifs.tuwien.ac.at/mir/msd/
 
@@ -30,6 +30,14 @@ train_triplets_df = pd.read_table(triplets_path, sep='\t', header=None, names=['
 print(train_triplets_df.head())
 play_count_grouped_df = train_triplets_df.groupby('song', as_index=False)['play_count'].sum().rename(columns={'play_count': 'total_play_count'})
 play_count_grouped_df = play_count_grouped_df.sort_values(by='total_play_count', ascending=False)
+
+# write grouped play count data and triplets to csv
+
+#train_triplets_df.to_csv(r"C:\Users\resha\data\train_triplets_df.csv")  
+train_triplets_df.to_csv(r"C:\Users\corc4\data\train_triplets_df.csv")  
+#play_count_grouped_df.to_csv(r"C:\Users\resha\data\play_count_grouped_df.csv")  
+play_count_grouped_df.to_csv(r"C:\Users\corc4\data\play_count_grouped_df.csv")  
+
 
 # housekeeping
 train_triplets_df
@@ -46,6 +54,9 @@ images_df.head()
 print(images_df['genre'].value_counts())
 images_df['genre'].unique()
 
+# write to csv and wack in data folder
+#images_df.to_csv(r"C:\Users\resha\data\images_df.csv")  
+images_df.to_csv(r"C:\Users\corc4\data\images_df.csv")  
 
 # Function to download an image from a URL
 def download_image(url, path):
@@ -115,6 +126,11 @@ print(track_metadata_df.head())  # Display the first few rows
 c.close()
 conn.close()
 
+# write track metadata to csv
+
+#track_metadata_df.to_csv(r"C:\Users\resha\data\track_metadata_df.csv")  
+track_metadata_df.to_csv(r"C:\Users\corc4\data\track_metadata_df.csv")  
+
 # housekeeping
 track_metadata_df
 track_metadata_df.columns 
@@ -153,38 +169,46 @@ lastfm_pivot_df = lastfm_tags_df.pivot(index='tid', columns='tag_number', values
 lastfm_pivot_df.columns = ['tid'] + [f'tag{i}' for i in range(1, len(lastfm_pivot_df.columns))]
 
 # write csv
-lastfm_tags_df.to_csv(r"C:\Users\resha\data\lastfm_tags_df.csv")  
-lastfm_pivot_df.to_csv(r"C:\Users\resha\data\lastfm_pivot_df.csv")  
+#lastfm_tags_df.to_csv(r"C:\Users\resha\data\lastfm_tags_df.csv")  
+#lastfm_pivot_df.to_csv(r"C:\Users\resha\data\lastfm_pivot_df.csv")  
+lastfm_tags_df.to_csv(r"C:\Users\corc4\data\lastfm_tags_df.csv")  
+lastfm_pivot_df.to_csv(r"C:\Users\corc4\data\lastfm_pivot_df.csv") 
 
 # opening genre dataset and coverting to dataframe 
-genres_df1 = pd.read_csv(genre_path,delimiter="\t", header=None)
-genres_df1.columns = ["track_id","genre"]
-print(genres_df1)
+genres_df = pd.read_csv(genre_path,delimiter="\t", header=None)
+genres_df.columns = ["track_id","genre"]
+print(genres_df)
+
+
+#genres_df.to_csv(r"C:\Users\resha\data\genres_df.csv")  
+genres_df.to_csv(r"C:\Users\corc4\data\genres_df.csv")  
 
 lastfm_pivot_df #all tags for each unique song nrow: 505216
 lastfm_tags_df # song list with tags that are not unique: 8598630
 track_metadata_df # all track metadata from millionsongdataset: 1000000
 train_triplets_df # triplets containing information about users and playcounts: 48373586
 play_count_grouped_df # play count for each song: 384546
-genres_df1 # genres with 422,714 labels
+genres_df # genres with 422,714 labels
 
 # joining dataset 
 track_df = pd.merge(track_metadata_df, play_count_grouped_df, left_on='song_id', right_on='song').drop('song', axis=1)
-track_df = pd.merge(track_df, genres_df1, how='inner', on='track_id')
+track_df = pd.merge(track_df, genres_df, how='inner', on='track_id')
 track_df = pd.merge(track_df, lastfm_pivot_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)
 
 track_df # nrow: 385256 columns (with genre this goes down to 195002): ['track_id', 'title', 'song_id', 'release', 'artist_id', 
          #'artist_mbid', 'artist_name', 'duration', 'artist_familiarity', 'artist_hotttnesss', 'year', 'total_play_count', 'tag1', "genre"]
 
 track_df2 = pd.merge(track_metadata_df, play_count_grouped_df, left_on='song_id', right_on='song').drop('song', axis=1)
-track_df2 = pd.merge(track_df, images_df, how='inner',  left_on='track_id', right_on='msd_track_id')
-track_df2 = pd.merge(track_df, lastfm_pivot_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)
+track_df2 = pd.merge(track_df2, images_df, how='inner',  left_on='track_id', right_on='msd_track_id')
+track_df2 = pd.merge(track_df2, lastfm_pivot_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)
 
 track_df2 # nrow: 385256 columns (with genre this goes down to 195002): ['track_id', 'title', 'song_id', 'release', 'artist_id', 
          #'artist_mbid', 'artist_name', 'duration', 'artist_familiarity', 'artist_hotttnesss', 'year', 'total_play_count', 'tag1', "genre"]
 
-track_df.to_csv(r"C:\Users\resha\data\track_df_genre1.csv")  
-track_df2.to_csv(r"C:\Users\resha\data\track_df_genre2.csv")  
+#track_df.to_csv(r"C:\Users\resha\data\track_df_genre1.csv")  
+#track_df2.to_csv(r"C:\Users\resha\data\track_df_genre2.csv")  
+track_df.to_csv(r"C:\Users\corc4\data\track_df_genre1.csv")  
+track_df2.to_csv(r"C:\Users\corc4\data\track_df_genre2.csv")  
 
 # housekeeping NEED TO CARRY THIS ON 
 
