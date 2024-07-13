@@ -16,11 +16,11 @@ db_tag_path = r'C:\Users\resha\data\lastfm_tags.db'
 triplets_path = r'C:\Users\resha\data\train_triplets.txt'
 genre_path = r'C:\Users\resha\data\msd-MAGD-genreAssignment.cls'
 image_path = r'C:\Users\resha\data\MSD-I_dataset.tsv'
-db_track_path = r'C:\Users\corc4\Downloads\track_metadata.db'
-db_tag_path = r'C:\Users\corc4\Downloads\lastfm_tags.db'
-triplets_path = r"C:\Users\corc4\Downloads\train_triplets.txt"
-genre_path = r'C:\Users\corc4\Downloads\msd-MAGD-genreAssignment.cls'
-image_path = r'C:\Users\corc4\Downloads\MSD-I_dataset.tsv'
+#db_track_path = r'C:\Users\corc4\Downloads\track_metadata.db'
+#db_tag_path = r'C:\Users\corc4\Downloads\lastfm_tags.db'
+#triplets_path = r"C:\Users\corc4\Downloads\train_triplets.txt"
+#genre_path = r'C:\Users\corc4\Downloads\msd-MAGD-genreAssignment.cls'
+#image_path = r'C:\Users\corc4\Downloads\MSD-I_dataset.tsv'
 
 # https://www.ifs.tuwien.ac.at/mir/msd/
 
@@ -33,10 +33,10 @@ play_count_grouped_df = play_count_grouped_df.sort_values(by='total_play_count',
 
 # write grouped play count data and triplets to csv
 
-#train_triplets_df.to_csv(r"C:\Users\resha\data\train_triplets_df.csv")  
-train_triplets_df.to_csv(r"C:\Users\corc4\data\train_triplets_df.csv")  
-#play_count_grouped_df.to_csv(r"C:\Users\resha\data\play_count_grouped_df.csv")  
-play_count_grouped_df.to_csv(r"C:\Users\corc4\data\play_count_grouped_df.csv")  
+train_triplets_df.to_csv(r"C:\Users\resha\data\train_triplets_df.csv")  
+#train_triplets_df.to_csv(r"C:\Users\corc4\data\train_triplets_df.csv")  
+play_count_grouped_df.to_csv(r"C:\Users\resha\data\play_count_grouped_df.csv")  
+#play_count_grouped_df.to_csv(r"C:\Users\corc4\data\play_count_grouped_df.csv")  
 
 
 # housekeeping
@@ -53,10 +53,11 @@ images_df.head()
 # housekeeping 
 print(images_df['genre'].value_counts())
 images_df['genre'].unique()
-
+images_df['msd_track_id'].nunique()
+ 
 # write to csv and wack in data folder
-#images_df.to_csv(r"C:\Users\resha\data\images_df.csv")  
-images_df.to_csv(r"C:\Users\corc4\data\images_df.csv")  
+images_df.to_csv(r"C:\Users\resha\data\images_df.csv")  
+#images_df.to_csv(r"C:\Users\corc4\data\images_df.csv")  
 
 # Function to download an image from a URL
 def download_image(url, path):
@@ -128,8 +129,8 @@ conn.close()
 
 # write track metadata to csv
 
-#track_metadata_df.to_csv(r"C:\Users\resha\data\track_metadata_df.csv")  
-track_metadata_df.to_csv(r"C:\Users\corc4\data\track_metadata_df.csv")  
+track_metadata_df.to_csv(r"C:\Users\resha\data\track_metadata_df.csv")  
+#track_metadata_df.to_csv(r"C:\Users\corc4\data\track_metadata_df.csv")  
 
 # housekeeping
 track_metadata_df
@@ -169,19 +170,19 @@ lastfm_pivot_df = lastfm_tags_df.pivot(index='tid', columns='tag_number', values
 lastfm_pivot_df.columns = ['tid'] + [f'tag{i}' for i in range(1, len(lastfm_pivot_df.columns))]
 
 # write csv
-#lastfm_tags_df.to_csv(r"C:\Users\resha\data\lastfm_tags_df.csv")  
-#lastfm_pivot_df.to_csv(r"C:\Users\resha\data\lastfm_pivot_df.csv")  
-lastfm_tags_df.to_csv(r"C:\Users\corc4\data\lastfm_tags_df.csv")  
-lastfm_pivot_df.to_csv(r"C:\Users\corc4\data\lastfm_pivot_df.csv") 
+lastfm_tags_df.to_csv(r"C:\Users\resha\data\lastfm_tags_df.csv")  
+lastfm_pivot_df.to_csv(r"C:\Users\resha\data\lastfm_pivot_df.csv")  
+#lastfm_tags_df.to_csv(r"C:\Users\corc4\data\lastfm_tags_df.csv")  
+#lastfm_pivot_df.to_csv(r"C:\Users\corc4\data\lastfm_pivot_df.csv") 
 
 # opening genre dataset and coverting to dataframe 
 genres_df = pd.read_csv(genre_path,delimiter="\t", header=None)
 genres_df.columns = ["track_id","genre"]
 print(genres_df)
+genres_df["track_id"].nunique
 
-
-#genres_df.to_csv(r"C:\Users\resha\data\genres_df.csv")  
-genres_df.to_csv(r"C:\Users\corc4\data\genres_df.csv")  
+genres_df.to_csv(r"C:\Users\resha\data\genres_df.csv")  
+#genres_df.to_csv(r"C:\Users\corc4\data\genres_df.csv")  
 
 lastfm_pivot_df #all tags for each unique song nrow: 505216
 lastfm_tags_df # song list with tags that are not unique: 8598630

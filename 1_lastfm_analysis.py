@@ -6,12 +6,15 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from thefuzz import fuzz
 from thefuzz import process
+from wordcloud import WordCloud
+import seaborn as sns
+
 
 # read processed lastfm tag datasets
-#lastfmpath = r"C:\Users\resha\data\lastfm_tags_df.csv"
-#pivot_path = r"C:\Users\resha\data\lastfm_pivot_df.csv"
-lastfmpath = r"C:\Users\corc4\data\lastfm_tags_df.csv"
-pivot_path = r"C:\Users\corc4\data\lastfm_pivot_df.csv"
+lastfmpath = r"C:\Users\resha\data\lastfm_tags_df.csv"
+pivot_path = r"C:\Users\resha\data\lastfm_pivot_df.csv"
+#lastfmpath = r"C:\Users\corc4\data\lastfm_tags_df.csv"
+#pivot_path = r"C:\Users\corc4\data\lastfm_pivot_df.csv"
 
 lastfm_tags_df = pd.read_csv(lastfmpath)
 lastfm_pivot_df = pd.read_csv(pivot_path)
@@ -39,55 +42,105 @@ ax.get_xaxis().set_major_formatter(
 labels = ax.bar_label(bar_container, fmt='{:,.0f}', color='white')
 for label in labels:
     label.set_fontsize(9)
-#plt.savefig(r"C:\Users\resha\plots\popular_tags.png")
-plt.savefig(r"C:\Users\corc4\plots\popular_tags.png")
+plt.savefig(r"C:\Users\resha\plots\popular_tags.png")
+#plt.savefig(r"C:\Users\corc4\plots\popular_tags.png")
 
 plt.show()
 
 
 
-########################## fuzzy grouping tags ##################################
+########################## fuzzy grouping women ##################################
 
 lastfm_tags_df['tag'] = lastfm_tags_df['tag'].astype(str)
-lastfm_tags_df['cleaned_tag'] = lastfm_tags_df['tag'].str.replace(r'[^a-zA-Z0-9\s]', '', regex=True).str.strip()
+lastfm_tags_df['cleaned_tag'] = lastfm_tags_df['tag'].str.replace(r'[^a-zA-Z0-9\s]', '', regex=True).str.strip().str.lower()
 lastfm_tags_df = lastfm_tags_df[lastfm_tags_df['cleaned_tag'].str.len() > 1]
 unique_tags = lastfm_tags_df['cleaned_tag'].unique()
 
 # housekeeping 
 len(unique_tags)
-# Calculate tag popularity
-tag_popularity = lastfm_tags_df['cleaned_tag'].value_counts()
 
-lastfm_tags_subset_df = lastfm_tags_df.sample(frac=0.05, random_state=42)  # Use a fixed seed for reproducibility
-unique_tags_subset = lastfm_tags_subset_df['cleaned_tag'].unique()
+# Define the words to match
+female_terms = ['woman', 'female', 'female singer', 'female vocalist']
+male_terms = ['man', 'male','male singer', 'male vocalist']
+neutral_terms = ['romantic', 'mania', 'german', 'germany', 'new romantic', 'romance','romantica',
+                 'djpmanlovedtracks','dancemania', 'romantic tension', 'manchester','argumanloved tracks','german metal', 'live performance', 'german rock', 'manatees and possums',
+                 'german lyrics']
 
-# Function to find the best match for a tag based on highest ratio and popularity
-def find_best_match(tag, tag_dict, tag_popularity, threshold=80):
-    # Extract top 5 potential matches
-    candidates = process.extract(tag, tag_dict.keys(), scorer=fuzz.partial_ratio, limit=5)
+# Function to determine gender
+def determine_gender(tag):
+    # Check for exact matches with neutral terms first
+    # Check for matches with female terms
+    for female_term in female_terms:
+        if fuzz.ratio(tag, female_term) > 80:
+            return 'female'    
+    # Check for matches with male terms
+    for male_term in male_terms:
+        if fuzz.ratio(tag, male_term) > 80:
+            return 'male'
+    # Return 'unknown' if no matches are found
+    return 'unknown'
+
+def determine_gender(tag):
+    # Initialize scores for female and male terms
+    female_score = 0
+    male_score = 0
     
-    best_match = None
-    highest_score = 0
+    # Calculate fuzzy match scores for female terms using fuzz.ratio
+    for female_term in female_terms:
+        score = fuzz.ratio(tag, female_term)
+        if score > 90:
+            female_score = score
     
-    for candidate, score in candidates:
-        if score >= threshold:
-            # Choose the best match based on score and popularity
-            if (score > highest_score) or (score == highest_score and tag_popularity[candidate] > tag_popularity.get(best_match, 0)):
-                best_match = candidate
-                highest_score = score
-    
-    if best_match:
-        return tag_dict[best_match]
-    return tag
+    # Calculate fuzzy match scores for male terms using fuzz.ratio or check if any male term is a substring of the tag
+    for male_term in male_terms:
+        score = fuzz.ratio(tag, male_term)
+        if score > 90:
+            male_score = score
 
-# Create a dictionary to map cleaned tags to their groups
-tag_mapping = {}
-for tag in unique_tags_subset:
-    if tag not in tag_mapping:
-        tag_mapping[tag] = find_best_match(tag, tag_mapping, tag_popularity)
+    # Decide the gender based on the highest score
+    if male_score > female_score:
+        return 'male'
+    elif female_score > male_score:
+        return 'female'
+    else:
+        return 'unknown'
 
-# Apply the tag mapping to the subset DataFrame
-lastfm_tags_subset_df['tag_match'] = lastfm_tags_subset_df['cleaned_tag'].map(lambda x: tag_mapping.get(x, x))
+
+# Group by cleaned_tag and apply the gender determination function
+unique_tags = lastfm_tags_df['cleaned_tag'].unique()
+gender_mapping = {tag: determine_gender(tag) for tag in unique_tags}
+
+# Map the gender back to the original DataFrame
+lastfm_tags_df['gender'] = lastfm_tags_df['cleaned_tag'].map(gender_mapping)
+
+# Display the DataFrame
+print(lastfm_tags_df)
+
+female_df = lastfm_tags_df[lastfm_tags_df['gender'] == 'female'].value_counts(subset=['cleaned_tag'])         
+female_df.head(50)
+male_df = lastfm_tags_df[lastfm_tags_df['gender'] == 'male'].value_counts(subset=['cleaned_tag'])         
+male_df.head(50)
+unknown_gender_df = lastfm_tags_df[lastfm_tags_df['gender'] == 'unknown'].value_counts(subset=['cleaned_tag']) 
+unknown_gender_df.head(50)
+
+gender_counts = lastfm_tags_df['gender'].value_counts()
+
+plt.figure(figsize=(10, 6))
+sns.barplot(x=gender_counts.index, y=gender_counts.values, palette='viridis')
+plt.title('Gender Label Counts')
+plt.xlabel('Gender')
+plt.ylabel('Count')
+plt.show()
+
+for gender in gender_counts.index:
+    wordcloud = WordCloud(width=800, height=400, background_color='black', colormap='Greens').generate(' '.join(lastfm_tags_df[lastfm_tags_df['gender'] == gender]['cleaned_tag']))
+    plt.figure(figsize=(10, 6))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.title(f'Word Cloud for {gender}')
+    plt.axis('off')
+    # Save the word cloud to a file
+    #wordcloud.to_file(f"wordcloud_{gender}.png")
+    plt.show()
 
 ############################ clustering tags ##################################
 import gensim.downloader as api
