@@ -15,8 +15,7 @@ import seaborn as sns
 #pivot_path = r"C:\Users\resha\data\lastfm_pivot_df.csv"
 lastfmpath = r"C:\Users\corc4\data\lastfm_tags_df.csv"
 pivot_path = r"C:\Users\corc4\data\lastfm_pivot_df.csv"
-
-# updates 
+ 
 lastfm_tags_df = pd.read_csv(lastfmpath)
 lastfm_pivot_df = pd.read_csv(pivot_path)
 
@@ -43,8 +42,8 @@ ax.get_xaxis().set_major_formatter(
 labels = ax.bar_label(bar_container, fmt='{:,.0f}', color='white')
 for label in labels:
     label.set_fontsize(9)
-plt.savefig(r"C:\Users\resha\plots\popular_tags.png")
-#plt.savefig(r"C:\Users\corc4\plots\popular_tags.png")
+#plt.savefig(r"C:\Users\resha\plots\popular_tags.png")
+plt.savefig(r"C:\Users\corc4\plots\popular_tags.png")
 
 plt.show()
 
@@ -56,29 +55,11 @@ lastfm_tags_df['tag'] = lastfm_tags_df['tag'].astype(str)
 lastfm_tags_df['cleaned_tag'] = lastfm_tags_df['tag'].str.replace(r'[^a-zA-Z0-9\s]', '', regex=True).str.strip().str.lower()
 lastfm_tags_df = lastfm_tags_df[lastfm_tags_df['cleaned_tag'].str.len() > 1]
 unique_tags = lastfm_tags_df['cleaned_tag'].unique()
-
-# housekeeping 
-len(unique_tags)
-
+ 
 # Define the words to match
-female_terms = ['woman', 'female', 'female singer', 'female vocalist']
+female_terms = ['woman', 'female', 'female singer', 'female vocalist', 'female vocal', 'female voice']
 male_terms = ['man', 'male','male singer', 'male vocalist']
-neutral_terms = ['romantic', 'mania', 'german', 'germany', 'new romantic', 'romance','romantica',
-                 'djpmanlovedtracks','dancemania', 'romantic tension', 'manchester','argumanloved tracks','german metal', 'live performance', 'german rock', 'manatees and possums',
-                 'german lyrics']
 
-# Function to determine gender
-def determine_gender(tag):
-    # Check for matches with female terms
-    for female_term in female_terms:
-        if fuzz.ratio(tag, female_term) > 80:
-            return 'female'    
-    # Check for matches with male terms
-    for male_term in male_terms:
-        if fuzz.ratio(tag, male_term) > 80:
-            return 'male'
-    # Return 'unknown' if no matches are found
-    return 'unknown'
 
 def determine_gender(tag):
     # Initialize scores for female and male terms
@@ -103,7 +84,7 @@ def determine_gender(tag):
     elif female_score > male_score:
         return 'female'
     else:
-        return 'unknown'
+        return 'NaN'
 
 
 # Group by cleaned_tag and apply the gender determination function
@@ -116,21 +97,18 @@ lastfm_tags_df['gender'] = lastfm_tags_df['cleaned_tag'].map(gender_mapping)
 # Display the DataFrame
 print(lastfm_tags_df)
 
-female_df = lastfm_tags_df[lastfm_tags_df['gender'] == 'female'].value_counts(subset=['cleaned_tag'])         
-female_df.head(50)
-male_df = lastfm_tags_df[lastfm_tags_df['gender'] == 'male'].value_counts(subset=['cleaned_tag'])         
-male_df.head(50)
-unknown_gender_df = lastfm_tags_df[lastfm_tags_df['gender'] == 'unknown'].value_counts(subset=['cleaned_tag']) 
-unknown_gender_df.head(50)
+# what tags are matched as male and female - do they make sense?
+female_df = lastfm_tags_df[lastfm_tags_df['gender'] == 'female']      
+female_df.value_counts(subset=['cleaned_tag']).head(50)
+male_df = lastfm_tags_df[lastfm_tags_df['gender'] == 'male']
+male_df.value_counts(subset=['cleaned_tag']).head(50)
+unknown_gender_df = lastfm_tags_df[lastfm_tags_df['gender'] == 'NaN'] 
+unknown_gender_df.value_counts(subset=['cleaned_tag'])
+
+# what percentage has been labelled?
+(female_df["tid"].nunique() + male_df["tid"].nunique())/ (lastfm_tags_df["tid"].nunique())
 
 gender_counts = lastfm_tags_df['gender'].value_counts()
-
-plt.figure(figsize=(10, 6))
-sns.barplot(x=gender_counts.index, y=gender_counts.values, palette='viridis')
-plt.title('Gender Label Counts')
-plt.xlabel('Gender')
-plt.ylabel('Count')
-plt.show()
 
 for gender in gender_counts.index:
     wordcloud = WordCloud(width=800, height=400, background_color='black', colormap='Greens').generate(' '.join(lastfm_tags_df[lastfm_tags_df['gender'] == gender]['cleaned_tag']))
@@ -139,7 +117,7 @@ for gender in gender_counts.index:
     plt.title(f'Word Cloud for {gender}')
     plt.axis('off')
     # Save the word cloud to a file
-    #wordcloud.to_file(f"wordcloud_{gender}.png")
+    wordcloud.to_file(f"wordcloud_{gender}.png")
     plt.show()
 
 ############################ clustering tags ##################################
