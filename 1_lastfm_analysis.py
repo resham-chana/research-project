@@ -43,8 +43,8 @@ ax.get_xaxis().set_major_formatter(
 labels = ax.bar_label(bar_container, fmt='{:,.0f}', color='white')
 for label in labels:
     label.set_fontsize(9)
-#plt.savefig(r"C:\Users\resha\plots\popular_tags.png")
-plt.savefig(r"C:\Users\corc4\plots\popular_tags.png")
+plt.savefig(r"C:\Users\resha\plots\popular_tags.png")
+#plt.savefig(r"C:\Users\corc4\plots\popular_tags.png")
 
 plt.show()
 
@@ -58,15 +58,17 @@ lastfm_tags_df = lastfm_tags_df[lastfm_tags_df['cleaned_tag'].str.len() > 1]
 unique_tags = lastfm_tags_df['cleaned_tag'].unique()
 
 # housekeeping 
- 
+len(unique_tags)
+
 # Define the words to match
 female_terms = ['woman', 'female', 'female singer', 'female vocalist']
 male_terms = ['man', 'male','male singer', 'male vocalist']
-b 
+neutral_terms = ['romantic', 'mania', 'german', 'germany', 'new romantic', 'romance','romantica',
+                 'djpmanlovedtracks','dancemania', 'romantic tension', 'manchester','argumanloved tracks','german metal', 'live performance', 'german rock', 'manatees and possums',
+                 'german lyrics']
 
 # Function to determine gender
 def determine_gender(tag):
-    # Check for exact matches with neutral terms first
     # Check for matches with female terms
     for female_term in female_terms:
         if fuzz.ratio(tag, female_term) > 80:
