@@ -11,11 +11,12 @@ import seaborn as sns
 
 
 # read processed lastfm tag datasets
-lastfmpath = r"C:\Users\resha\data\lastfm_tags_df.csv"
-pivot_path = r"C:\Users\resha\data\lastfm_pivot_df.csv"
-#lastfmpath = r"C:\Users\corc4\data\lastfm_tags_df.csv"
-#pivot_path = r"C:\Users\corc4\data\lastfm_pivot_df.csv"
+#lastfmpath = r"C:\Users\resha\data\lastfm_tags_df.csv"
+#pivot_path = r"C:\Users\resha\data\lastfm_pivot_df.csv"
+lastfmpath = r"C:\Users\corc4\data\lastfm_tags_df.csv"
+pivot_path = r"C:\Users\corc4\data\lastfm_pivot_df.csv"
 
+# updates 
 lastfm_tags_df = pd.read_csv(lastfmpath)
 lastfm_pivot_df = pd.read_csv(pivot_path)
 
@@ -42,8 +43,8 @@ ax.get_xaxis().set_major_formatter(
 labels = ax.bar_label(bar_container, fmt='{:,.0f}', color='white')
 for label in labels:
     label.set_fontsize(9)
-plt.savefig(r"C:\Users\resha\plots\popular_tags.png")
-#plt.savefig(r"C:\Users\corc4\plots\popular_tags.png")
+#plt.savefig(r"C:\Users\resha\plots\popular_tags.png")
+plt.savefig(r"C:\Users\corc4\plots\popular_tags.png")
 
 plt.show()
 
@@ -57,14 +58,11 @@ lastfm_tags_df = lastfm_tags_df[lastfm_tags_df['cleaned_tag'].str.len() > 1]
 unique_tags = lastfm_tags_df['cleaned_tag'].unique()
 
 # housekeeping 
-len(unique_tags)
-
+ 
 # Define the words to match
 female_terms = ['woman', 'female', 'female singer', 'female vocalist']
 male_terms = ['man', 'male','male singer', 'male vocalist']
-neutral_terms = ['romantic', 'mania', 'german', 'germany', 'new romantic', 'romance','romantica',
-                 'djpmanlovedtracks','dancemania', 'romantic tension', 'manchester','argumanloved tracks','german metal', 'live performance', 'german rock', 'manatees and possums',
-                 'german lyrics']
+b 
 
 # Function to determine gender
 def determine_gender(tag):
