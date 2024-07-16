@@ -8,16 +8,19 @@ from thefuzz import fuzz
 from thefuzz import process
 from wordcloud import WordCloud
 import seaborn as sns
+import os
 
 
 # read processed lastfm tag datasets
-#lastfmpath = r"C:\Users\resha\data\lastfm_tags_df.csv"
-#pivot_path = r"C:\Users\resha\data\lastfm_pivot_df.csv"
-lastfmpath = r"C:\Users\corc4\data\lastfm_tags_df.csv"
-pivot_path = r"C:\Users\corc4\data\lastfm_pivot_df.csv"
+lastfmpath = r"C:\Users\resha\data\lastfm_tags_df.csv"
+pivot_path = r"C:\Users\resha\data\lastfm_pivot_df.csv"
+country_path = r"C:\Users\resha\data\country_df.csv"
+#lastfmpath = r"C:\Users\corc4\data\lastfm_tags_df.csv"
+#pivot_path = r"C:\Users\corc4\data\lastfm_pivot_df.csv"
  
 lastfm_tags_df = pd.read_csv(lastfmpath)
 lastfm_pivot_df = pd.read_csv(pivot_path)
+country_df = pd.read_csv(country_path)
 
 # visualise most common tags
 tag_counts = lastfm_tags_df["tag"].value_counts()
@@ -29,10 +32,7 @@ tag_counts_df = tag_counts_df.head(20).sort_values("count", ascending=True)
 
 plt.style.use("dark_background")
 fig, ax = plt.subplots(figsize=(12,8))
-
 bar_container = ax.barh("tag", "count", data=tag_counts_df, color="#4CAF50")
-
-# Set plot title and labels
 plt.title('Top 20 Tags by Count')
 plt.xlabel('Count')
 plt.ylabel('Tag')
@@ -42,24 +42,24 @@ ax.get_xaxis().set_major_formatter(
 labels = ax.bar_label(bar_container, fmt='{:,.0f}', color='white')
 for label in labels:
     label.set_fontsize(9)
-#plt.savefig(r"C:\Users\resha\plots\popular_tags.png")
-plt.savefig(r"C:\Users\corc4\plots\popular_tags.png")
+plt.savefig(r"C:\Users\resha\plots\popular_tags.png")
+#plt.savefig(r"C:\Users\corc4\plots\popular_tags.png")
 
 plt.show()
 
 
-
-########################## fuzzy grouping women ##################################
+# cleaning tags
 
 lastfm_tags_df['tag'] = lastfm_tags_df['tag'].astype(str)
 lastfm_tags_df['cleaned_tag'] = lastfm_tags_df['tag'].str.replace(r'[^a-zA-Z0-9\s]', '', regex=True).str.strip().str.lower()
 lastfm_tags_df = lastfm_tags_df[lastfm_tags_df['cleaned_tag'].str.len() > 1]
 unique_tags = lastfm_tags_df['cleaned_tag'].unique()
- 
+
+########################## fuzzy grouping gender ##################################
+
 # Define the words to match
 female_terms = ['woman', 'female', 'female singer', 'female vocalist', 'female vocal', 'female voice']
 male_terms = ['man', 'male','male singer', 'male vocalist']
-
 
 def determine_gender(tag):
     # Initialize scores for female and male terms
@@ -117,8 +117,38 @@ for gender in gender_counts.index:
     plt.title(f'Word Cloud for {gender}')
     plt.axis('off')
     # Save the word cloud to a file
-    wordcloud.to_file(f"wordcloud_{gender}.png")
+    wordcloud.to_file(os.path.join(r"C:\Users\resha\plots", f"wordcloud_{gender}.png"))
+    #wordcloud.to_file(os.path.join(r"C:\Users\corc4\plots", f"wordcloud_{gender}.png"))
+
     plt.show()
+
+############################ fuzzy grouping countries ##################################
+
+# checking if the tags countain different languages:
+
+countries = country_df['Country'].tolist()
+
+# check if the tags are 
+def determine_country(tag, countries):
+    best_match, score = process.extractOne(tag, countries, scorer=fuzz.ratio)
+    if score > 90:
+        return best_match
+    return 'NaN'
+
+lastfm_tags_df['country'] = None
+
+for country in countries:
+    country_match_bool = lastfm_tags_df['cleaned_tag'].str.contains(country)
+    lastfm_tags_df.loc[country_match_bool, 'country'] = country
+
+country_mismatch = lastfm_tags_df['country'].isna()
+lastfm_tags_df.loc[country_mismatch, 'country'] = lastfm_tags_df.loc[country_mismatch, 'cleaned_tag'].apply(determine_country, countries=countries)
+
+# Display the updated DataFrame
+print(lastfm_tags_df[['cleaned_tag', 'country']])
+
+contains_string = lastfm_tags_df['cleaned_tag'].str.contains(r"india|america|britain|pakistan", na=False).sum()
+
 
 ############################ clustering tags ##################################
 import gensim.downloader as api

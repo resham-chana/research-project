@@ -10,12 +10,19 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import requests
 from pathlib import Path
+import re
+
+################################### scraping country, nationality, language and ethnicity ####################################
+
+
 
 db_track_path = r'C:\Users\resha\data\track_metadata.db'
 db_tag_path = r'C:\Users\resha\data\lastfm_tags.db'
 triplets_path = r'C:\Users\resha\data\train_triplets.txt'
 genre_path = r'C:\Users\resha\data\msd-MAGD-genreAssignment.cls'
 image_path = r'C:\Users\resha\data\MSD-I_dataset.tsv'
+geography_path = r'C:\Users\resha\data\countries.csv'
+
 #db_track_path = r'C:\Users\corc4\Downloads\track_metadata.db'
 #db_tag_path = r'C:\Users\corc4\Downloads\lastfm_tags.db'
 #triplets_path = r"C:\Users\corc4\Downloads\train_triplets.txt"
@@ -23,6 +30,76 @@ image_path = r'C:\Users\resha\data\MSD-I_dataset.tsv'
 #image_path = r'C:\Users\corc4\Downloads\MSD-I_dataset.tsv'
 
 # https://www.ifs.tuwien.ac.at/mir/msd/
+
+# Read the country data, keep relevant columns and save as a csv
+geography_df = pd.read_csv(geography_path)
+geography_df = geography_df[["Country","Geography: Map references",
+                             "People and Society: Nationality - adjective",
+                             "People and Society: Ethnic groups","People and Society: Languages",
+                             "People and Society: Religions"]]
+
+# new column names:
+dict = {'Country': 'country',
+        'Geography: Map references': 'continent',
+        'People and Society: Nationality - adjective': 'nationality',
+        'People and Society: Ethnic groups': 'ethnicity',
+        'People and Society: Languages' : 'language',
+        'People and Society: Religions': 'religion'}
+
+geography_df.rename(columns=dict,
+          inplace=True)
+
+country_df = geography_df[['country','nationality']]
+
+# Function to clean and split nationality strings
+def clean_and_split(strings):
+    # Remove text after 'note'
+    strings = re.sub(r'-', '', strings)
+    strings = re.sub(r'[()]', ' ', strings) #brackets
+    strings = re.sub(r'[0-9]+(?:\.[0-9]+)?|[%]', '', strings) #numbers, percentage
+    strings = ' '.join(word for word in strings.split() if not word.islower()) # remove lower case words
+    strings = strings.replace('~', '').replace('-', '').replace('<', '').replace('.','')
+    # Split the text by commas, semicolons, 'or', and slashes
+    split_strings = re.split(r'[;,/]| or ', strings)
+    # Remove leading and trailing whitespace and filter out empty strings
+    split_strings = [n.strip() for n in split_strings if n.strip()]
+    # Remove any remaining unwanted words (if any)
+    return split_strings
+
+country_df.loc[:, 'nationality'] = country_df['nationality'].astype(str).apply(clean_and_split)
+country_df = country_df.explode('nationality').reset_index(drop=True)
+
+with pd.option_context('display.max_rows', None,'display.max_columns',None):
+    print(country_df)
+
+continent_df = geography_df[['continent']].drop_duplicates().drop([33,81,83,241,254])
+
+ethnic_groups_df = geography_df[['country','ethnicity']]
+ethnic_groups_df.loc[:, 'ethnicity'] = ethnic_groups_df['ethnicity'].astype(str).apply(clean_and_split)
+ethnic_groups_df = ethnic_groups_df.explode('ethnicity').reset_index(drop=True)
+with pd.option_context('display.max_rows', None,):
+    print(ethnic_groups_df)
+
+language_df = geography_df[['country','language']]
+language_df.loc[:, 'language'] = language_df['language'].astype(str).apply(clean_and_split)
+language_df = language_df.explode('language').reset_index(drop=True)
+with pd.option_context('display.max_rows', None,):
+    print(language_df)
+
+
+religion_df = geography_df[['country','religion']]
+religion_df.loc[:, 'religion'] = religion_df['religion'].astype(str).apply(clean_and_split)
+religion_df = religion_df.explode('religion').reset_index(drop=True)
+with pd.option_context('display.max_rows', None,):
+    print(religion_df)
+
+# new column if comma separated and / separated and 
+# get rid of numbers and % and - and () and ; and make everything lowercase and the words 
+# and/or/est/unspecified/other/mixed/including/unspecified/official/less/than/NaN/singular/plural/note/(s)
+# make dashes / and - spaces
+# new column based of commas
+
+geography_df.to_csv(r"C:\Users\resha\data\country_df.csv")  
 
 
 # Read the tab-delimited text file and add headers
@@ -32,12 +109,10 @@ play_count_grouped_df = train_triplets_df.groupby('song', as_index=False)['play_
 play_count_grouped_df = play_count_grouped_df.sort_values(by='total_play_count', ascending=False)
 
 # write grouped play count data and triplets to csv
-
 train_triplets_df.to_csv(r"C:\Users\resha\data\train_triplets_df.csv")  
 #train_triplets_df.to_csv(r"C:\Users\corc4\data\train_triplets_df.csv")  
 play_count_grouped_df.to_csv(r"C:\Users\resha\data\play_count_grouped_df.csv")  
 #play_count_grouped_df.to_csv(r"C:\Users\corc4\data\play_count_grouped_df.csv")  
-
 
 # housekeeping
 train_triplets_df
@@ -128,7 +203,6 @@ c.close()
 conn.close()
 
 # write track metadata to csv
-
 track_metadata_df.to_csv(r"C:\Users\resha\data\track_metadata_df.csv")  
 #track_metadata_df.to_csv(r"C:\Users\corc4\data\track_metadata_df.csv")  
 
