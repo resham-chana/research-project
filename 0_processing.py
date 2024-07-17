@@ -14,8 +14,6 @@ import re
 
 ################################### scraping country, nationality, language and ethnicity ####################################
 
-
-
 db_track_path = r'C:\Users\resha\data\track_metadata.db'
 db_tag_path = r'C:\Users\resha\data\lastfm_tags.db'
 triplets_path = r'C:\Users\resha\data\train_triplets.txt'
@@ -49,57 +47,7 @@ dict = {'Country': 'country',
 geography_df.rename(columns=dict,
           inplace=True)
 
-country_df = geography_df[['country','nationality']]
-
-# Function to clean and split nationality strings
-def clean_and_split(strings):
-    # Remove text after 'note'
-    strings = re.sub(r'-', '', strings)
-    strings = re.sub(r'[()]', ' ', strings) #brackets
-    strings = re.sub(r'[0-9]+(?:\.[0-9]+)?|[%]', '', strings) #numbers, percentage
-    strings = ' '.join(word for word in strings.split() if not word.islower()) # remove lower case words
-    strings = strings.replace('~', '').replace('-', '').replace('<', '').replace('.','')
-    # Split the text by commas, semicolons, 'or', and slashes
-    split_strings = re.split(r'[;,/]| or ', strings)
-    # Remove leading and trailing whitespace and filter out empty strings
-    split_strings = [n.strip() for n in split_strings if n.strip()]
-    # Remove any remaining unwanted words (if any)
-    return split_strings
-
-country_df.loc[:, 'nationality'] = country_df['nationality'].astype(str).apply(clean_and_split)
-country_df = country_df.explode('nationality').reset_index(drop=True)
-
-with pd.option_context('display.max_rows', None,'display.max_columns',None):
-    print(country_df)
-
-continent_df = geography_df[['continent']].drop_duplicates().drop([33,81,83,241,254])
-
-ethnic_groups_df = geography_df[['country','ethnicity']]
-ethnic_groups_df.loc[:, 'ethnicity'] = ethnic_groups_df['ethnicity'].astype(str).apply(clean_and_split)
-ethnic_groups_df = ethnic_groups_df.explode('ethnicity').reset_index(drop=True)
-with pd.option_context('display.max_rows', None,):
-    print(ethnic_groups_df)
-
-language_df = geography_df[['country','language']]
-language_df.loc[:, 'language'] = language_df['language'].astype(str).apply(clean_and_split)
-language_df = language_df.explode('language').reset_index(drop=True)
-with pd.option_context('display.max_rows', None,):
-    print(language_df)
-
-
-religion_df = geography_df[['country','religion']]
-religion_df.loc[:, 'religion'] = religion_df['religion'].astype(str).apply(clean_and_split)
-religion_df = religion_df.explode('religion').reset_index(drop=True)
-with pd.option_context('display.max_rows', None,):
-    print(religion_df)
-
-# new column if comma separated and / separated and 
-# get rid of numbers and % and - and () and ; and make everything lowercase and the words 
-# and/or/est/unspecified/other/mixed/including/unspecified/official/less/than/NaN/singular/plural/note/(s)
-# make dashes / and - spaces
-# new column based of commas
-
-geography_df.to_csv(r"C:\Users\resha\data\country_df.csv")  
+geography_df.to_csv(r"C:\Users\resha\data\geography_df.csv")  
 
 
 # Read the tab-delimited text file and add headers

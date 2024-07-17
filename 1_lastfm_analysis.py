@@ -9,7 +9,7 @@ from thefuzz import process
 from wordcloud import WordCloud
 import seaborn as sns
 import os
-
+import re
 
 # read processed lastfm tag datasets
 lastfmpath = r"C:\Users\resha\data\lastfm_tags_df.csv"
@@ -122,20 +122,127 @@ for gender in gender_counts.index:
 
     plt.show()
 
-############################ fuzzy grouping countries ##################################
+############################ fuzzy grouping countries/languages/ethnicities/religion ##################################
 
 # checking if the tags countain different languages:
 
-countries = country_df['Country'].tolist()
 
-# check if the tags are 
-def determine_country(tag, countries):
-    best_match, score = process.extractOne(tag, countries, scorer=fuzz.ratio)
-    if score > 90:
-        return best_match
-    return 'NaN'
+geography_path = r"C:\Users\resha\data\geography_df.csv"
+geography_df = pd.read_csv(geography_path)
 
-lastfm_tags_df['country'] = None
+
+# Function to clean and split nationality strings
+def clean_and_split(strings):
+    # Remove text after 'note'
+    strings = re.sub(r'-', '', strings)
+    strings = re.sub(r'[()]', ' ', strings) #brackets
+    strings = re.sub(r'[0-9]+(?:\.[0-9]+)?|[%]', '', strings) #numbers, percentage
+    strings = ' '.join(word for word in strings.split() if not word.islower()) # remove lower case words
+    strings = strings.replace('~', '').replace('-', '').replace('<', '').replace('.','')
+    # Split the text by commas, semicolons, 'or', and slashes
+    split_strings = re.split(r'[;,/]| or ', strings)
+    # Remove leading and trailing whitespace and filter out empty strings
+    split_strings = [n.strip() for n in split_strings if n.strip()]
+    # Remove any remaining unwanted words (if any)
+    return split_strings
+
+nationality_df = geography_df[['country','nationality']]
+nationality_df.loc[:, 'nationality'] = nationality_df['nationality'].astype(str).apply(clean_and_split)
+nationality_df = nationality_df.explode('nationality').reset_index(drop=True).drop_duplicates()
+with pd.option_context('display.max_rows', None,'display.max_columns',None):
+    print(nationality_df)
+
+continent_df = geography_df[['continent']].drop_duplicates().drop([33,81,83,241,254])
+
+ethnic_groups_df = geography_df[['country','ethnicity']]
+ethnic_groups_df.loc[:, 'ethnicity'] = ethnic_groups_df['ethnicity'].astype(str).apply(clean_and_split)
+ethnic_groups_df = ethnic_groups_df.explode('ethnicity').reset_index(drop=True).drop_duplicates("ethnicity")
+with pd.option_context('display.max_rows', None,):
+    print(ethnic_groups_df)
+
+language_df = geography_df[['country','language']]
+language_df.loc[:, 'language'] = language_df['language'].astype(str).apply(clean_and_split)
+language_df = language_df.explode('language').reset_index(drop=True).drop_duplicates(subset="language")
+with pd.option_context('display.max_rows', None,):
+    print(language_df)
+
+religion_df = geography_df[['country','religion']]
+religion_df.loc[:, 'religion'] = religion_df['religion'].astype(str).apply(clean_and_split)
+religion_df = religion_df.explode('religion').reset_index(drop=True).drop_duplicates(subset="religion")
+with pd.option_context('display.max_rows', None,):
+    print(religion_df)
+
+# clean columns 
+
+def clean_columns(dataframe, columns):
+    dataframe = dataframe.dropna(subset=columns)    
+    for column in columns:
+        dataframe[column] = dataframe[column].str.replace(r'[^a-zA-Z0-9\s]', '', regex=True).str.strip().str.lower()
+    return dataframe
+
+nationality_df = clean_columns(nationality_df, ["country", "nationality"])
+continent_df = clean_columns(continent_df, ["continent"])
+ethnic_groups_df = clean_columns(ethnic_groups_df, ["ethnicity"])
+language_df = clean_columns(language_df, ["language"])
+religion_df = clean_columns(religion_df, ["religion"])
+
+
+# new column if comma separated and / separated and 
+# get rid of numbers and % and - and () and ; and make everything lowercase and the words 
+# and/or/est/unspecified/other/mixed/including/unspecified/official/less/than/NaN/singular/plural/note/(s)
+# make dashes / and - spaces
+# new column based of commas
+
+#nationality_df.to_csv(r"C:\Users\resha\data\nationality_df.csv")  
+#continent_df.to_csv(r"C:\Users\resha\data\continent_df.csv")  
+#ethnic_groups_df.to_csv(r"C:\Users\resha\data\ethnic_groups_df.csv")  
+#religion_df.to_csv(r"C:\Users\resha\data\religion_df.csv")  
+
+# Function to match tags with countries
+def match_country(tag, nationality_df):
+    # Special cases handling
+    if 'uk' in tag:
+        return 'united kingdom'
+    if 'usa' in tag:
+        return 'united states'
+    
+    for _, row in nationality_df.iterrows():
+        country = row['country']
+        nationality = row['nationality']
+        
+        # Fuzzy matching
+        if fuzz.ratio(tag, country) > 90 or fuzz.ratio(tag, nationality) > 90:
+            return country
+        
+        # Substring checks
+        if nationality != 'nan' and nationality in tag:
+            return country
+        if country in tag:
+            return country
+    
+    # Specific substring checks for common patterns
+    if 'brit' in tag:
+        return 'united kingdom'    
+    return None
+
+lastfm_tags_df['country'] = lastfm_tags_df['cleaned_tag'].apply(lambda x: match_country(x, nationality_df))
+
+############################ language ##############################
+
+
+# Function to match tags with countries
+def match_country(tag, language_df):
+    
+    for _, row in language.iterrows():
+        language = row['language']        
+        # Fuzzy matching
+        if fuzz.ratio(tag, language) > 90 or fuzz.ratio(tag, language) > 90:
+            return language
+        # Substring checks
+        if language != 'nan' and language in tag:
+            return language
+    return None
+
 
 for country in countries:
     country_match_bool = lastfm_tags_df['cleaned_tag'].str.contains(country)
