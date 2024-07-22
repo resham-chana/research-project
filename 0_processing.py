@@ -26,6 +26,7 @@ geography_path = r'C:\Users\resha\data\countries.csv'
 #triplets_path = r"C:\Users\corc4\Downloads\train_triplets.txt"
 #genre_path = r'C:\Users\corc4\Downloads\msd-MAGD-genreAssignment.cls'
 #image_path = r'C:\Users\corc4\Downloads\MSD-I_dataset.tsv'
+#geography_path = r'C:\Users\corc4\Downloads\countries.csv'
 
 # https://www.ifs.tuwien.ac.at/mir/msd/
 
@@ -47,7 +48,8 @@ dict = {'Country': 'country',
 geography_df.rename(columns=dict,
           inplace=True)
 
-geography_df.to_csv(r"C:\Users\resha\data\geography_df.csv")  
+#geography_df.to_csv(r"C:\Users\resha\data\geography_df.csv")  
+geography_df.to_csv(r"C:\Users\corc4\data\geography_df.csv")  
 
 
 # Read the tab-delimited text file and add headers
@@ -214,49 +216,49 @@ play_count_grouped_df # play count for each song: 384546
 genres_df # genres with 422,714 labels
 
 # joining dataset 
-track_df = pd.merge(track_metadata_df, play_count_grouped_df, left_on='song_id', right_on='song').drop('song', axis=1)
-track_df = pd.merge(track_df, genres_df, how='inner', on='track_id')
-track_df = pd.merge(track_df, lastfm_pivot_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)
+#track_df = pd.merge(track_metadata_df, play_count_grouped_df, left_on='song_id', right_on='song').drop('song', axis=1)
+#track_df = pd.merge(track_df, genres_df, how='inner', on='track_id')
+#track_df = pd.merge(track_df, lastfm_pivot_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)#
 
-track_df # nrow: 385256 columns (with genre this goes down to 195002): ['track_id', 'title', 'song_id', 'release', 'artist_id', 
-         #'artist_mbid', 'artist_name', 'duration', 'artist_familiarity', 'artist_hotttnesss', 'year', 'total_play_count', 'tag1', "genre"]
+#track_df # nrow: 385256 columns (with genre this goes down to 195002): ['track_id', 'title', 'song_id', 'release', 'artist_id', 
+#         #'artist_mbid', 'artist_name', 'duration', 'artist_familiarity', 'artist_hotttnesss', 'year', 'total_play_count', 'tag1', "genre"]
 
-track_df2 = pd.merge(track_metadata_df, play_count_grouped_df, left_on='song_id', right_on='song').drop('song', axis=1)
-track_df2 = pd.merge(track_df2, images_df, how='inner',  left_on='track_id', right_on='msd_track_id')
-track_df2 = pd.merge(track_df2, lastfm_pivot_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)
+#track_df2 = pd.merge(track_metadata_df, play_count_grouped_df, left_on='song_id', right_on='song').drop('song', axis=1)
+#track_df2 = pd.merge(track_df2, images_df, how='inner',  left_on='track_id', right_on='msd_track_id')
+#track_df2 = pd.merge(track_df2, lastfm_pivot_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)
 
-track_df2 # nrow: 385256 columns (with genre this goes down to 195002): ['track_id', 'title', 'song_id', 'release', 'artist_id', 
+#track_df2 # nrow: 385256 columns (with genre this goes down to 195002): ['track_id', 'title', 'song_id', 'release', 'artist_id', 
          #'artist_mbid', 'artist_name', 'duration', 'artist_familiarity', 'artist_hotttnesss', 'year', 'total_play_count', 'tag1', "genre"]
 
 #track_df.to_csv(r"C:\Users\resha\data\track_df_genre1.csv")  
 #track_df2.to_csv(r"C:\Users\resha\data\track_df_genre2.csv")  
-track_df.to_csv(r"C:\Users\corc4\data\track_df_genre1.csv")  
-track_df2.to_csv(r"C:\Users\corc4\data\track_df_genre2.csv")  
+#track_df.to_csv(r"C:\Users\corc4\data\track_df_genre1.csv")  
+#track_df2.to_csv(r"C:\Users\corc4\data\track_df_genre2.csv")  
 
 # housekeeping NEED TO CARRY THIS ON 
 
-print(track_df.isnull().sum().sum())
-print(track_df2.isnull().sum().sum())
+#print(track_df.isnull().sum().sum())
+#print(track_df2.isnull().sum().sum())
 
 
 # test NANs and rows etc
-track_df.columns
+#track_df.columns
+#
+#fig, ax = plt.subplots(figsize=(10, 6))#
 
-fig, ax = plt.subplots(figsize=(10, 6))
-
-# Scatter plot
-ax.scatter(track_df[track_df["year"]>0]["year"], track_df[track_df["year"]>0]["total_play_count"], marker='o', color='b', alpha=0.7)
+## Scatter plot
+#ax.scatter(track_df[track_df["year"]>0]["year"], track_df[track_df["year"]>0]["total_play_count"], marker='o', color='b', alpha=0.7)
 
 # Add labels and title
-ax.set_title('Total Play Count vs Year')
-ax.set_xlabel('Year')
-ax.set_ylabel('Total Play Count')
+#ax.set_title('Total Play Count vs Year')
+#ax.set_xlabel('Year')
+#ax.set_ylabel('Total Play Count')
 
 # Display grid for better visualization
-ax.grid(True)
+#ax.grid(True)
 
 # Show plot
-plt.tight_layout()
-plt.show()
+#plt.tight_layout()
+#plt.show()
 
 

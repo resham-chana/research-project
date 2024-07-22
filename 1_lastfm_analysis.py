@@ -10,19 +10,17 @@ from wordcloud import WordCloud
 import seaborn as sns
 import os
 import re
-import gensim.downloader as api
 from sklearn.metrics.pairwise import cosine_similarity
 
 # read processed lastfm tag datasets
 lastfmpath = r"C:\Users\resha\data\lastfm_tags_df.csv"
 pivot_path = r"C:\Users\resha\data\lastfm_pivot_df.csv"
-country_path = r"C:\Users\resha\data\country_df.csv"
+country_path = r"C:\Users\resha\data\geography_df.csv"
 #lastfmpath = r"C:\Users\corc4\data\lastfm_tags_df.csv"
 #pivot_path = r"C:\Users\corc4\data\lastfm_pivot_df.csv"
- 
+
 lastfm_tags_df = pd.read_csv(lastfmpath)
 lastfm_pivot_df = pd.read_csv(pivot_path)
-country_df = pd.read_csv(country_path)
 
 # visualise most common tags
 tag_counts = lastfm_tags_df["tag"].value_counts()
@@ -135,8 +133,11 @@ for gender in gender_counts.index:
 ################################################ fuzzy grouping countries/languages/ethnicities/religion #######################################################
 
 # checking if the tags countain different languages:
-geography_path = r"C:\Users\resha\data\geography_df.csv"
+#geography_path = r"C:\Users\resha\data\geography_df.csv"
+#geography_df = pd.read_csv(geography_path)
+geography_path = r"C:\Users\corc4\data\geography_df.csv"
 geography_df = pd.read_csv(geography_path)
+
 
 def clean_and_split(s):
     # things in brackets
@@ -152,14 +153,17 @@ new_data = pd.DataFrame({
 
 # Concatenate the old DataFrame with the new one
 nationality_df = geography_df[['country', 'nationality']].astype(str)
-nationality_df['country'] = nationality_df['country'].str.lower()
+nationality_df['country'] = nationality_df['country'].apply(clean_and_split).str.lower()
 nationality_df['nationality'] = nationality_df['nationality'].apply(clean_and_split).str.lower()
+nationality_df['country'] = nationality_df['country'].replace({'north korean': 'korean', 'south korean': 'korean'})
 nationality_df['nationality'] = nationality_df['nationality'].apply(lambda x: re.split(r'\s* or \s*|\s*;\s*|\s*,\s*', x))
 nationality_df = nationality_df.explode('nationality', ignore_index=True)
 nationality_df['nationality'] = nationality_df['nationality'].str.strip()
 nationality_df = nationality_df[nationality_df["nationality"] != '']
-nationality_df["nationality"] = nationality_df["nationality"].replace(['nan', 'none'], pd.NA).fillna(nationality_df["country"])
-nationality_df["nationality"] = nationality_df["nationality"].drop([14,69,112,137])
+nationality_df["nationality"] = nationality_df["nationality"].replace(['nan', 'none',"NaN"], pd.NA).fillna(nationality_df["country"])
+nationality_df = nationality_df[~((nationality_df['nationality'] == 'dutch') & (nationality_df['country'] != 'netherlands'))]
+
+#nationality_df["nationality"] = nationality_df["nationality"].drop([14,69,112,137])
 nationality_df = pd.concat([nationality_df, new_data], ignore_index=True)
 
 nationalities = list(nationality_df.to_records(index = False))
@@ -229,7 +233,7 @@ def determine_geo(tag, tuples):
         # Calculate scores for both geo and its alternative name
         score_geo = fuzz.ratio(tag, geo)
         score_alternative = fuzz.ratio(tag, alternative_name)
-        
+        highest_score = 0
         # Determine the highest score and the best match
         if score_geo > highest_score:
             highest_score = score_geo
@@ -257,6 +261,44 @@ lastfm_tags_df[lastfm_tags_df['religion'] != 'NaN']
 lastfm_tags_df[lastfm_tags_df['continent'] != 'NaN']
 lastfm_tags_df[lastfm_tags_df['nationalities'] != 'NaN']
 
-lastfm_tags_df.to_csv(r"C:\Users\resha\data\lastfm_diverse_tags_df.csv")  
 lastfm_diverse_tags_df = lastfm_tags_df
 
+# clean up indexing
+lastfm_diverse_tags_df = lastfm_diverse_tags_df.drop(columns=['Unnamed: 0.1', 'Unnamed: 0'])
+
+# fill gender/language/religion/continent/nationality for the same tracks
+def fill_diverse(df, column):
+    non_nan_values = df.loc[df[column].notna(), ['tid', column]]
+    duplicated_values = non_nan_values.set_index('tid')[column].to_dict()
+    df.loc[:, column] = df['tid'].map(duplicated_values).combine_first(df[column])
+    return df
+
+# List of columns to duplicate values for
+columns_to_duplicate = ['language', 'religion', 'continent', 'nationalities']
+
+# Apply duplication function to each specified column
+for column in columns_to_duplicate:
+    df = fill_diverse(lastfm_diverse_tags_df, column)
+
+# average count per cleaned tag
+cleaned_tag_counts = lastfm_diverse_tags_df['cleaned_tag'].value_counts()
+
+cleaned_tag_counts.mean()
+
+# remove tags if they have been used less than 16 times
+tags_to_remove = cleaned_tag_counts[cleaned_tag_counts <= 17].index
+lastfm_diverse_tags_df = lastfm_diverse_tags_df[~lastfm_diverse_tags_df['cleaned_tag'].isin(tags_to_remove)]
+
+# pivoting tags 
+lastfm_diverse_tags_df.loc[:, 'tag_number'] = lastfm_diverse_tags_df.groupby('tid').cumcount() + 1
+lastfm_diverse_pivot_df = lastfm_diverse_tags_df.pivot(index='tid', columns='tag_number', values='tag').reset_index()
+lastfm_diverse_pivot_df.columns = ['tid'] + [f'tag{i}' for i in range(1, len(lastfm_diverse_pivot_df.columns))]
+
+# Merge the additional columns back to the pivoted DataFrame
+lastfm_diverse_pivot_df = pd.merge(lastfm_diverse_pivot_df, 
+                                   lastfm_diverse_tags_df[['tid', 'gender', 'language', 'religion', 'continent', 'nationalities']].drop_duplicates(subset=['tid'])
+                                   , on='tid', how='left')
+
+
+lastfm_diverse_tags_df.to_csv(r"C:\Users\corc4\data\lastfm_diverse_tags_df.csv")  
+lastfm_diverse_pivot_df.to_csv(r"C:\Users\corc4\data\lastfm_diverse_pivot_df.csv")  
