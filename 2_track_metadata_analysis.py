@@ -30,6 +30,16 @@ ax.set_xlabel('Year')
 ax.set_ylabel('Count')
 ax.set_title('Track Count by Year')
 plt.xticks(fontsize=8)
+
+# Adjust x-ticks to show labels every 10 years
+years = year_counts.index
+# Create x-tick positions (0-based index for bar plot)
+xticks = [i for i, year in enumerate(years) if year % 10 == 0]
+# Create x-tick labels (only years divisible by 10)
+xtick_labels = [str(year) for year in years if year % 10 == 0]
+
+ax.set_xticks(xticks)  # Set x-tick positions
+ax.set_xticklabels(xtick_labels, rotation=45)  # Set x-tick labels
 # Show the plot
 #plt.savefig(r"C:\Users\resha\plots\year_distribution.png")
 #plt.savefig(r"C:\Users\corc4\plots\year_distribution.png")
