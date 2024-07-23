@@ -72,27 +72,25 @@ track_features_country_df = pd.merge(track_features_df, lastfm_diverse_pivot_df[
                                   how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)
 
 
-lastfm_diverse_pivot_df[["religion","nationalities","language","gender","continent"]].isna().sum()
+track_features_country_df.dropna(inplace= True)
+track_features_country_grouped_df = track_features_country_df.groupby('nationalities', as_index=False).sum()
+track_features_country_grouped_df = track_features_country_grouped_df[track_features_country_grouped_df['nationalities'] != 'world']
 
-
-import plotly.express as px
-
-# Create basic choropleth map
-fig = px.choropleth(track_features_country_df, locations='nationality'
-                    , color='log_total_play_count', hover_name='nationality',
-                    projection='natural earth', title='log_play_count')
-fig.show()
+track_features_country_grouped_df['iso_alpha_3'] = coco.convert(names=track_features_country_grouped_df['nationalities'], to='ISO3')
+track_features_country_grouped_df = track_features_country_grouped_df[['total_play_count', 'iso_alpha_3',"nationalities"]]
 
 import plotly.express as px
-import pandas as pd
-
-
-# Import data from GitHub
-data = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminder_with_codes.csv')
+import country_converter as coco
 
 
 # Create basic choropleth map
-fig = px.choropleth(data, locations='iso_alpha', color='gdpPercap', hover_name='country',
-                    projection='natural earth', animation_frame='year',
-                    title='GDP per Capita by Country')
+fig = px.choropleth(
+    track_features_country_grouped_df,
+    locations='iso_alpha_3',
+    color='total_play_count',
+    color_continuous_scale='OrRd',  # Color scale
+    title='Total Play Count by Country',
+    labels={'total_play_count': 'Total Play Count'},
+    hover_name='nationalities'  # Show country names on hover
+)
 fig.show()
