@@ -13,7 +13,8 @@ track_metadata_cleaned_df.columns
 #       'artist_hotttnesss', 'year', 'track_7digitalid', 'shs_perf',
 #       'shs_work'
 
-track_metadata_cleaned_df = track_metadata_df[track_metadata_df['year'] != 0]
+track_metadata_cleaned_df = track_metadata_cleaned_df[track_metadata_cleaned_df['year'] != 0]
+track_metadata_cleaned_df.to_csv(r"C:\Users\corc4\data\track_metadata_cleaned_df.csv")  
 
 
 # Get the value counts of the 'year' column
