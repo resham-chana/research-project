@@ -25,7 +25,7 @@ lastfm_pivot_df = pd.read_csv(pivot_path)
 # visualise most common tags
 tag_counts = lastfm_tags_df["tag"].value_counts()
 
-# convert to DataFrame 
+# convert to dataframe 
 tag_counts_df = tag_counts.reset_index()
 tag_counts_df.columns = ['tag', 'count']
 tag_counts_df = tag_counts_df.head(20).sort_values("count", ascending=True)
@@ -38,7 +38,7 @@ plt.xlabel('Count')
 plt.ylabel('Tag')
 plt.yticks(fontsize=11.9)
 ax.get_xaxis().set_major_formatter(
-     mtick.FuncFormatter(lambda x, p: format(int(x), ',')))
+     mtick.FuncFormatter(lambda x, p: format(int(x), ','))) # add commas to numbers
 labels = ax.bar_label(bar_container, fmt='{:,.0f}', color='white')
 for label in labels:
     label.set_fontsize(13)
@@ -51,10 +51,10 @@ plt.show()
 
 
 # cleaning tags
-
-lastfm_tags_df['tag'] = lastfm_tags_df['tag'].astype(str)
+lastfm_tags_df['tag'] = lastfm_tags_df['tag'].astype(str) # string type
+# remove unwanted punctuation and to lowercase
 lastfm_tags_df['cleaned_tag'] = lastfm_tags_df['tag'].str.replace(r'[^a-zA-Z0-9\s]', '', regex=True).str.strip().str.lower()
-lastfm_tags_df = lastfm_tags_df[lastfm_tags_df['cleaned_tag'].str.len() > 1]
+lastfm_tags_df = lastfm_tags_df[lastfm_tags_df['cleaned_tag'].str.len() > 1] # remove short tags
 unique_tags = lastfm_tags_df['cleaned_tag'].unique()
 
 ############################################# fuzzy grouping gender #####################################################
@@ -63,31 +63,30 @@ unique_tags = lastfm_tags_df['cleaned_tag'].unique()
 female_terms = ['woman', 'female', 'female singer', 'female vocalist', 'female vocal', 'female voice']
 male_terms = ['man', 'male','male singer', 'male vocalist']
 
-
 def is_standalone_word(word, text):
-    # Create a regular expression pattern to check if the word is a standalone word
+    # standalone word if tere are no other letters surrounding it:
     pattern = r'\b' + re.escape(word) + r'\b'
     matches = re.findall(pattern, text)
     return bool(matches)
 
 def determine_gender(tag):
-    # Initialize scores for female and male terms
+    # scores for female and male terms
     female_score = 0
     male_score = 0
     
-    # Calculate fuzzy match scores for female terms
+    # calculate fuzzy score for female
     for female_term in female_terms:
         score = fuzz.ratio(tag, female_term)
         if is_standalone_word(female_term, tag):
             female_score = max(female_score, score)
     
-    # Calculate fuzzy match scores for male terms
+    # calculate fuzzy score for male
     for male_term in male_terms:
         score = fuzz.ratio(tag, male_term)
         if is_standalone_word(male_term, tag):
             male_score = max(male_score, score)
 
-    # Decide the gender based on the highest score
+    # decide gender based on highest score
     if male_score > female_score:
         return 'male'
     elif female_score > male_score:
@@ -95,15 +94,12 @@ def determine_gender(tag):
     else:
         return 'NaN'
 
-# Group by cleaned_tag and apply the gender determination function
+# group by cleaned_tag and apply the gender function
 unique_tags = lastfm_tags_df['cleaned_tag'].unique()
 gender_mapping = {tag: determine_gender(tag) for tag in unique_tags}
 
-# Map the gender back to the original DataFrame
+# map the gender back to the original dataframe
 lastfm_tags_df['gender'] = lastfm_tags_df['cleaned_tag'].map(gender_mapping)
-
-# Display the DataFrame
-print(lastfm_tags_df)
 
 # what tags are matched as male and female - do they make sense?
 female_df = lastfm_tags_df[lastfm_tags_df['gender'] == 'female']      
@@ -116,8 +112,9 @@ unknown_gender_df.value_counts(subset=['cleaned_tag'])
 # what percentage has been labelled?
 (female_df["tid"].nunique() + male_df["tid"].nunique())/ (lastfm_tags_df["tid"].nunique())
 # visualise the wordclouds
-gender_counts = lastfm_tags_df['gender'].value_counts()
+gender_counts = lastfm_tags_df['gender'].value_counts() # 19% of unique tracks (may be repeats in labelling)
 
+# word cloud to display whihc tags fit with female
 for gender in gender_counts.index:
     wordcloud = WordCloud(width=800, height=400, background_color='black', colormap='Greens').generate(' '.join(lastfm_tags_df[lastfm_tags_df['gender'] == gender]['cleaned_tag']))
     plt.figure(figsize=(10, 6))
@@ -138,40 +135,37 @@ for gender in gender_counts.index:
 geography_path = r"C:\Users\corc4\data\geography_df.csv"
 geography_df = pd.read_csv(geography_path)
 
-
-def clean_and_split(s):
+# function to remove words in bracks
+def clean(s):
     # things in brackets
     s = re.sub(r'\(.*?\)', '', s)
     # Remove everything after 'note'
     s = re.sub(r'note.*', '', s, flags=re.IGNORECASE)
     return s
 
+# add new data
 new_data = pd.DataFrame({
     "country": ["united kingdom", "united kingdom", "america", "scandinavian"],
     "nationality": ["brit", "uk", "usa", "scandi"]
 })
 
-# Concatenate the old DataFrame with the new one
-nationality_df = geography_df[['country', 'nationality']].astype(str)
-nationality_df['country'] = nationality_df['country'].apply(clean_and_split).str.lower()
-nationality_df['nationality'] = nationality_df['nationality'].apply(clean_and_split).str.lower()
-nationality_df['country'] = nationality_df['country'].replace({'north korean': 'korean', 'south korean': 'korean'})
-nationality_df['nationality'] = nationality_df['nationality'].apply(lambda x: re.split(r'\s* or \s*|\s*;\s*|\s*,\s*', x))
+
+nationality_df = geography_df[['country', 'nationality']].astype(str) # to string
+nationality_df['country'] = nationality_df['country'].apply(clean).str.lower() # to lower
+nationality_df['nationality'] = nationality_df['nationality'].apply(clean).str.lower()  # to lower
+nationality_df['country'] = nationality_df['country'].replace({'north korean': 'korean', 'south korean': 'korean'}) # alter korea to properly label it
+nationality_df['nationality'] = nationality_df['nationality'].apply(lambda x: re.split(r'\s* or \s*|\s*;\s*|\s*,\s*', x))# split nationalities 
 nationality_df = nationality_df.explode('nationality', ignore_index=True)
-nationality_df['nationality'] = nationality_df['nationality'].str.strip()
+nationality_df['nationality'] = nationality_df['nationality'].str.strip() # remove unwanted spaces
 nationality_df = nationality_df[nationality_df["nationality"] != '']
-nationality_df["nationality"] = nationality_df["nationality"].replace(['nan', 'none',"NaN"], pd.NA).fillna(nationality_df["country"])
-nationality_df = nationality_df[~((nationality_df['nationality'] == 'dutch') & (nationality_df['country'] != 'netherlands'))]
+nationality_df["nationality"] = nationality_df["nationality"].replace(['nan', 'none',"NaN"], pd.NA).fillna(nationality_df["country"]) # remove NaNs
+nationality_df = nationality_df[~((nationality_df['nationality'] == 'dutch') & (nationality_df['country'] != 'netherlands'))] # alter dutch labelling
+nationality_df = pd.concat([nationality_df, new_data], ignore_index=True) # add new data
 
-#nationality_df["nationality"] = nationality_df["nationality"].drop([14,69,112,137])
-nationality_df = pd.concat([nationality_df, new_data], ignore_index=True)
-
+# create list of nationalities
 nationalities = list(nationality_df.to_records(index = False))
 
-with pd.option_context('display.max_rows',None,):
-    print(nationality_df)
-
-############################ language ##############################
+############################ fuzzy grouping language ##############################
 
 languages = ["mandarin", "chinese", "spanish", "english", "hindi", "bengali", "portuguese", "russian", "japanese", "vietnamese", 
              "turkish", "marathi", "telugu", "punjabi", "korean", "tamil", "german", "french", "urdu", "arabic", 
@@ -181,12 +175,11 @@ def determine_language(tag):
     highest_score = 0
     best_match = "NaN"
     
-    # Check if any language is a standalone word in the tag
+    # check if any language is a standalone word in the tag
     for language in languages:
         if is_standalone_word(language, tag):
             return language
-    
-    # If no standalone match, proceed with fuzzy matching
+    # calculate fuzzy score
     for language in languages:
         score = fuzz.ratio(tag, language)
         if score > highest_score:
@@ -195,18 +188,18 @@ def determine_language(tag):
     
     return best_match if highest_score > 90 else "NaN"
 
-# Group by cleaned_tag and apply the language determination function
+# apply language function
 unique_tags = lastfm_tags_df['cleaned_tag'].unique()
 language_mapping = {tag: determine_language(tag) for tag in unique_tags}
 
-# Map the gender back to the original DataFrame
+# map this onto dataframe
 lastfm_tags_df['language'] = lastfm_tags_df['cleaned_tag'].map(language_mapping)
 
-# Display the DataFrame
+# show df
 lastfm_tags_df.head(50)
 lastfm_tags_df[lastfm_tags_df['language'] != 'NaN']
 
-######################################### religion/continents/other_geo ########################################
+######################################### fuzzy grouping religion/continents ########################################
 
 religions = [("christianity", "christian"),("islam", "muslim"),("hinduism", "hindu"),
              ("buddhism", "buddhist"),("sikhism", "sikh"),("judaism", "jewish"),("bahai","bahais"), ("jainism", "jain"),("shinto", "shintoist"),("cao dai", "caodaism"),

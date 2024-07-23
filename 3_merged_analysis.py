@@ -9,7 +9,6 @@ lastfm_diverse_pivot_df = pd.read_csv(r"C:\Users\corc4\data\lastfm_diverse_pivot
 track_metadata_cleaned_df = pd.read_csv(r"C:\Users\corc4\data\track_metadata_cleaned_df.csv")  
 train_triplets_df = pd.read_csv(r"C:\Users\corc4\data\train_triplets_df.csv")
 play_count_grouped_df = pd.read_csv(r"C:\Users\corc4\data\play_count_grouped_df.csv")
-
 genres_df = pd.read_csv(r"C:\Users\corc4\data\genres_df.csv")
 
 #images_df = pd.read_csv(r'C:\Users\corc4\Downloads\MSD-I_dataset.tsv', sep='\t')
@@ -35,6 +34,7 @@ sns.pairplot(track_features_df, vars=selected_vars, hue = "genre",  palette="hus
              ,kind = "kde",plot_kws={'alpha':0.5})
 plt.savefig("pairwiseplot.png")
 plt.show()
+
 
 # gender, race etc
 

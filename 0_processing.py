@@ -1,26 +1,18 @@
-import os
-import sys
-import glob
-import time
-import datetime
+# importing relevant libraries
 import numpy as np
 import sqlite3
-import csv
 import pandas as pd
 import matplotlib.pyplot as plt
 import requests
 from pathlib import Path
-import re
 
-################################### scraping country, nationality, language and ethnicity ####################################
-
+# defining paths
 db_track_path = r'C:\Users\resha\data\track_metadata.db'
 db_tag_path = r'C:\Users\resha\data\lastfm_tags.db'
 triplets_path = r'C:\Users\resha\data\train_triplets.txt'
 genre_path = r'C:\Users\resha\data\msd-MAGD-genreAssignment.cls'
 image_path = r'C:\Users\resha\data\MSD-I_dataset.tsv'
 geography_path = r'C:\Users\resha\data\countries.csv'
-
 #db_track_path = r'C:\Users\corc4\Downloads\track_metadata.db'
 #db_tag_path = r'C:\Users\corc4\Downloads\lastfm_tags.db'
 #triplets_path = r"C:\Users\corc4\Downloads\train_triplets.txt"
@@ -28,16 +20,14 @@ geography_path = r'C:\Users\resha\data\countries.csv'
 #image_path = r'C:\Users\corc4\Downloads\MSD-I_dataset.tsv'
 #geography_path = r'C:\Users\corc4\Downloads\countries.csv'
 
-# https://www.ifs.tuwien.ac.at/mir/msd/
-
-# Read the country data, keep relevant columns and save as a csv
+# read the country data, keep relevant columns and save as a csv
 geography_df = pd.read_csv(geography_path)
 geography_df = geography_df[["Country","Geography: Map references",
                              "People and Society: Nationality - adjective",
                              "People and Society: Ethnic groups","People and Society: Languages",
                              "People and Society: Religions"]]
 
-# new column names:
+# new column names
 dict = {'Country': 'country',
         'Geography: Map references': 'continent',
         'People and Society: Nationality - adjective': 'nationality',
@@ -51,10 +41,10 @@ geography_df.rename(columns=dict,
 #geography_df.to_csv(r"C:\Users\resha\data\geography_df.csv")  
 geography_df.to_csv(r"C:\Users\corc4\data\geography_df.csv")  
 
-
-# Read the tab-delimited text file and add headers
+# read train_triplet text file and add headers
 train_triplets_df = pd.read_table(triplets_path, sep='\t', header=None, names=['user', 'song', 'play_count'])
 print(train_triplets_df.head())
+# group to find total play count
 play_count_grouped_df = train_triplets_df.groupby('song', as_index=False)['play_count'].sum().rename(columns={'play_count': 'total_play_count'})
 play_count_grouped_df = play_count_grouped_df.sort_values(by='total_play_count', ascending=False)
 
@@ -64,7 +54,7 @@ train_triplets_df.to_csv(r"C:\Users\resha\data\train_triplets_df.csv")
 play_count_grouped_df.to_csv(r"C:\Users\resha\data\play_count_grouped_df.csv")  
 #play_count_grouped_df.to_csv(r"C:\Users\corc4\data\play_count_grouped_df.csv")  
 
-# housekeeping
+# housekeeping: check column names, unique tracks and nulls
 train_triplets_df
 train_triplets_df.columns 
 # unique tracks
@@ -75,20 +65,20 @@ print(train_triplets_df.isnull().sum().sum())
 images_df = pd.read_csv(image_path, sep='\t')
 images_df.head()
 
-# housekeeping 
+# housekeeping: check counts, unique genres and tracks
 print(images_df['genre'].value_counts())
 images_df['genre'].unique()
 images_df['msd_track_id'].nunique()
  
-# write to csv and wack in data folder
+# write to csv
 images_df.to_csv(r"C:\Users\resha\data\images_df.csv")  
 #images_df.to_csv(r"C:\Users\corc4\data\images_df.csv")  
 
 # Function to download an image from a URL
 def download_image(url, path):
     try:
-        response = requests.get(url, stream=True, timeout=10)  # timeout added
-        response.raise_for_status()  # Raises an HTTPError 
+        response = requests.get(url, stream=True, timeout=10)  
+        response.raise_for_status()  
         with open(path, 'wb') as file:
             for chunk in response.iter_content(1024): 
                 file.write(chunk)
@@ -109,18 +99,18 @@ def download_image(url, path):
 # Set to keep track of downloaded URLs
 downloaded_urls = set()
 
-# Iterate through the dataset and download images
+# iterate through the dataset and download images
 for index, row in images_df.iterrows():
     set_name = row['set']
     genre = row['genre']
     url = row['image_url']
     
-    # Check if the URL has already been downloaded - skips the duplicates
+    # skips the duplicates is already downloaded
     if url in downloaded_urls:
         print(f"Skipping already downloaded URL: {url}")
         continue
     
-    # Create the directory if it does not exist
+    # create directory
     dir_path = Path(base_dir) / set_name / genre
     dir_path.mkdir(parents=True, exist_ok=True)
     
@@ -133,22 +123,15 @@ for index, row in images_df.iterrows():
     # Add the URL to the set of downloaded URLs
     downloaded_urls.add(url)
 
-print("Image download and organisation complete.")
-
 # code to covert the track metadata database into a pandas data frame
-# connect to the SQLite database
 conn = sqlite3.connect(db_track_path)
-# from that connection, get a cursor to do queries
 c = conn.cursor()
 # the table name is 'songs'
 TABLENAME = 'songs'
-# Fetch data from SQLite database and convert to Pandas DataFrame
+# get data from database and convert to pandas dataframe
 q = f"SELECT * FROM {TABLENAME}"
 track_metadata_df = pd.read_sql_query(q, conn)
-# Display the DataFrame
-print('*************** TABLE CONTENT AS PANDAS DATAFRAME ***************************')
-print(track_metadata_df.head())  # Display the first few rows
-# close the cursor and the connection
+print(track_metadata_df.head()) 
 c.close()
 conn.close()
 
@@ -156,7 +139,7 @@ conn.close()
 track_metadata_df.to_csv(r"C:\Users\resha\data\track_metadata_df.csv")  
 #track_metadata_df.to_csv(r"C:\Users\corc4\data\track_metadata_df.csv")  
 
-# housekeeping
+# housekeeping: check columns, unique tracks and nulls
 track_metadata_df
 track_metadata_df.columns 
 # unique tracks
@@ -164,10 +147,8 @@ len(pd.unique(track_metadata_df['track_id']))
 print(track_metadata_df.isnull().sum().sum())
 
 # converting last.fm tag dataset to a pandas datafram
-# Connect to the lastfm_tags SQLite database
 conn_tag = sqlite3.connect(db_tag_path)
-
-# Fetch data with tids in one column and tags in another column
+# get data of tags and track ID
 q_tag = """
 SELECT tids.tid, tags.tag
 FROM tids
@@ -175,13 +156,10 @@ JOIN tid_tag ON tids.ROWID = tid_tag.tid
 JOIN tags ON tid_tag.tag = tags.ROWID
 """
 lastfm_tags_df = pd.read_sql_query(q_tag, conn_tag)
-
-print('*************** LASTFM TAGS AS PANDAS DATAFRAME ***************************')
-print(lastfm_tags_df.head())  # Display the first few rows
-
+print(lastfm_tags_df.head())  
 conn_tag.close()
 
-# housekeeping
+# housekeeping: check unique tags, ids
 unique_tags_count = lastfm_tags_df['tag'].nunique() #522366
 unique_track_count = len(pd.unique(lastfm_tags_df['tid']))
 print(lastfm_tags_df.isnull().sum().sum())
@@ -214,51 +192,3 @@ track_metadata_df # all track metadata from millionsongdataset: 1000000
 train_triplets_df # triplets containing information about users and playcounts: 48373586
 play_count_grouped_df # play count for each song: 384546
 genres_df # genres with 422,714 labels
-
-# joining dataset 
-#track_df = pd.merge(track_metadata_df, play_count_grouped_df, left_on='song_id', right_on='song').drop('song', axis=1)
-#track_df = pd.merge(track_df, genres_df, how='inner', on='track_id')
-#track_df = pd.merge(track_df, lastfm_pivot_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)#
-
-#track_df # nrow: 385256 columns (with genre this goes down to 195002): ['track_id', 'title', 'song_id', 'release', 'artist_id', 
-#         #'artist_mbid', 'artist_name', 'duration', 'artist_familiarity', 'artist_hotttnesss', 'year', 'total_play_count', 'tag1', "genre"]
-
-#track_df2 = pd.merge(track_metadata_df, play_count_grouped_df, left_on='song_id', right_on='song').drop('song', axis=1)
-#track_df2 = pd.merge(track_df2, images_df, how='inner',  left_on='track_id', right_on='msd_track_id')
-#track_df2 = pd.merge(track_df2, lastfm_pivot_df, how='left', left_on='track_id', right_on='tid').drop('tid', axis=1)
-
-#track_df2 # nrow: 385256 columns (with genre this goes down to 195002): ['track_id', 'title', 'song_id', 'release', 'artist_id', 
-         #'artist_mbid', 'artist_name', 'duration', 'artist_familiarity', 'artist_hotttnesss', 'year', 'total_play_count', 'tag1', "genre"]
-
-#track_df.to_csv(r"C:\Users\resha\data\track_df_genre1.csv")  
-#track_df2.to_csv(r"C:\Users\resha\data\track_df_genre2.csv")  
-#track_df.to_csv(r"C:\Users\corc4\data\track_df_genre1.csv")  
-#track_df2.to_csv(r"C:\Users\corc4\data\track_df_genre2.csv")  
-
-# housekeeping NEED TO CARRY THIS ON 
-
-#print(track_df.isnull().sum().sum())
-#print(track_df2.isnull().sum().sum())
-
-
-# test NANs and rows etc
-#track_df.columns
-#
-#fig, ax = plt.subplots(figsize=(10, 6))#
-
-## Scatter plot
-#ax.scatter(track_df[track_df["year"]>0]["year"], track_df[track_df["year"]>0]["total_play_count"], marker='o', color='b', alpha=0.7)
-
-# Add labels and title
-#ax.set_title('Total Play Count vs Year')
-#ax.set_xlabel('Year')
-#ax.set_ylabel('Total Play Count')
-
-# Display grid for better visualization
-#ax.grid(True)
-
-# Show plot
-#plt.tight_layout()
-#plt.show()
-
-
