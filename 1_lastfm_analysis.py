@@ -133,7 +133,7 @@ for gender in gender_counts.index:
 #geography_path = r"C:\Users\resha\data\geography_df.csv"
 #geography_df = pd.read_csv(geography_path)
 geography_path = r"C:\Users\corc4\data\geography_df.csv"
-geography_df = pd.read_csv(geography_path)
+geography_df = pd.read_csv(country_path)
 
 # function to remove words in bracks
 def clean(s):
@@ -145,7 +145,7 @@ def clean(s):
 
 # add new data
 new_data = pd.DataFrame({
-    "country": ["united kingdom", "united kingdom", "america", "scandinavian"],
+    "country": ["united kingdom", "united kingdom", "united states", "scandinavian"],
     "nationality": ["brit", "uk", "usa", "scandi"]
 })
 
@@ -256,8 +256,11 @@ lastfm_tags_df[lastfm_tags_df['nationalities'] != 'NaN']
 
 lastfm_diverse_tags_df = lastfm_tags_df
 
+#lastfm_diverse_tags_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_tags_df.csv")
+
 # clean up indexing
-lastfm_diverse_tags_df = lastfm_diverse_tags_df.drop(columns=['Unnamed: 0.1', 'Unnamed: 0'])
+#lastfm_diverse_tags_df = lastfm_diverse_tags_df.drop(columns=['Unnamed: 0.1', 'Unnamed: 0'])
+lastfm_diverse_tags_df = lastfm_diverse_tags_df.drop(columns=['Unnamed: 0'])
 
 # fill gender/language/religion/continent/nationality for the same tracks
 def fill_diverse(df, column):
@@ -293,5 +296,7 @@ lastfm_diverse_pivot_df = pd.merge(lastfm_diverse_pivot_df,
                                    , on='tid', how='left')
 
 
-lastfm_diverse_tags_df.to_csv(r"C:\Users\corc4\data\lastfm_diverse_tags_df.csv")  
-lastfm_diverse_pivot_df.to_csv(r"C:\Users\corc4\data\lastfm_diverse_pivot_df.csv")  
+#lastfm_diverse_tags_df.to_csv(r"C:\Users\corc4\data\lastfm_diverse_tags_df.csv")  
+#lastfm_diverse_pivot_df.to_csv(r"C:\Users\corc4\data\lastfm_diverse_pivot_df.csv")  
+lastfm_diverse_tags_df.to_csv(r"C:\Users\resha\data\lastfm_diverse_tags_df.csv")  
+lastfm_diverse_pivot_df.to_csv(r"C:\Users\resha\data\lastfm_diverse_pivot_df.csv")  

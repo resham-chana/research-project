@@ -2,9 +2,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 
-track_metadata_df = pd.read_csv(r"C:\Users\corc4\data\track_metadata_df.csv")
+#track_metadata_df = pd.read_csv(r"C:\Users\corc4\data\track_metadata_df.csv")
+track_metadata_df = pd.read_csv(r"C:\Users\resha\data\track_metadata_df.csv")
 
-track_metadata_cleaned_df = track_metadata_df.drop(columns=['Unnamed: 0','shs_work','shs_perf','track_7digitalid','artist_id','artist_mbid',])
+#track_metadata_cleaned_df = track_metadata_df.drop(columns=['Unnamed: 0','shs_work','shs_perf','track_7digitalid','artist_id','artist_mbid',])
+track_metadata_cleaned_df = track_metadata_df.drop(columns=['Unnamed: 0','artist_id','artist_mbid',])
 
 track_metadata_cleaned_df.columns 
 
@@ -14,7 +16,8 @@ track_metadata_cleaned_df.columns
 #       'shs_work'
 
 track_metadata_cleaned_df = track_metadata_cleaned_df[track_metadata_cleaned_df['year'] != 0]
-track_metadata_cleaned_df.to_csv(r"C:\Users\corc4\data\track_metadata_cleaned_df.csv")  
+#track_metadata_cleaned_df.to_csv(r"C:\Users\corc4\data\track_metadata_cleaned_df.csv")  
+track_metadata_cleaned_df.to_csv(r"C:\Users\resha\data\track_metadata_cleaned_df.csv")  
 
 
 # Get the value counts of the 'year' column

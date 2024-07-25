@@ -4,13 +4,21 @@ import seaborn as sns
 # Create the default pairplot
 import matplotlib.pyplot as plt
 import numpy as np
-lastfm_diverse_tags_df = pd.read_csv(r"C:\Users\corc4\data\lastfm_diverse_tags_df.csv")
-lastfm_diverse_pivot_df = pd.read_csv(r"C:\Users\corc4\data\lastfm_diverse_pivot_df.csv")
-track_metadata_cleaned_df = pd.read_csv(r"C:\Users\corc4\data\track_metadata_cleaned_df.csv")  
-train_triplets_df = pd.read_csv(r"C:\Users\corc4\data\train_triplets_df.csv")
-play_count_grouped_df = pd.read_csv(r"C:\Users\corc4\data\play_count_grouped_df.csv")
-genres_df = pd.read_csv(r"C:\Users\corc4\data\genres_df.csv")
+import plotly.express as px
+import country_converter as coco
 
+#lastfm_diverse_tags_df = pd.read_csv(r"C:\Users\corc4\data\lastfm_diverse_tags_df.csv")
+#lastfm_diverse_pivot_df = pd.read_csv(r"C:\Users\corc4\data\lastfm_diverse_pivot_df.csv")
+#track_metadata_cleaned_df = pd.read_csv(r"C:\Users\corc4\data\track_metadata_cleaned_df.csv")  
+#train_triplets_df = pd.read_csv(r"C:\Users\corc4\data\train_triplets_df.csv")
+#play_count_grouped_df = pd.read_csv(r"C:\Users\corc4\data\play_count_grouped_df.csv")
+#genres_df = pd.read_csv(r"C:\Users\corc4\data\genres_df.csv")
+lastfm_diverse_tags_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_tags_df.csv")
+lastfm_diverse_pivot_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_pivot_df.csv")
+track_metadata_cleaned_df = pd.read_csv(r"C:\Users\resha\data\track_metadata_cleaned_df.csv")  
+train_triplets_df = pd.read_csv(r"C:\Users\resha\data\train_triplets_df.csv")
+play_count_grouped_df = pd.read_csv(r"C:\Users\resha\data\play_count_grouped_df.csv")
+genres_df = pd.read_csv(r"C:\Users\resha\data\genres_df.csv")
 #images_df = pd.read_csv(r'C:\Users\corc4\Downloads\MSD-I_dataset.tsv', sep='\t')
 #images_df.columns
 #images_df = images_df.iloc[:,[0,1,2]]
@@ -73,24 +81,66 @@ track_features_country_df = pd.merge(track_features_df, lastfm_diverse_pivot_df[
 
 
 track_features_country_df.dropna(inplace= True)
-track_features_country_grouped_df = track_features_country_df.groupby('nationalities', as_index=False).sum()
-track_features_country_grouped_df = track_features_country_grouped_df[track_features_country_grouped_df['nationalities'] != 'world']
+track_features_country_grouped_df = track_features_country_df[["nationalities","log_total_play_count"]].groupby('nationalities', as_index=False).sum()
+track_features_country_grouped_df = track_features_country_grouped_df[(track_features_country_grouped_df['nationalities'] != 'world')  &
+    (track_features_country_grouped_df['nationalities'] != 'scandinavian')]
 
 track_features_country_grouped_df['iso_alpha_3'] = coco.convert(names=track_features_country_grouped_df['nationalities'], to='ISO3')
-track_features_country_grouped_df = track_features_country_grouped_df[['total_play_count', 'iso_alpha_3',"nationalities"]]
+track_features_country_grouped_df = track_features_country_grouped_df[['log_total_play_count', 'iso_alpha_3',"nationalities"]]
+unique_nationalities = track_features_country_df['nationalities'].unique()
 
-import plotly.express as px
-import country_converter as coco
+track_features_country_df.sort_values(by="log_total_play_count", ascending=False)
+track_features_country_grouped_df.sort_values(by="log_total_play_count", ascending=False)
+track_features_country_df[track_features_country_df["nationalities"] == "luxembourg"]
+
+with pd.option_context('display.max_rows', 5, 'display.max_columns', None): 
+    print(track_features_country_df[track_features_country_df["nationalities"] == "eswatini"])
 
 
+plt.style.use('dark_background')
 # Create basic choropleth map
 fig = px.choropleth(
     track_features_country_grouped_df,
     locations='iso_alpha_3',
-    color='total_play_count',
-    color_continuous_scale='OrRd',  # Color scale
+    color='log_total_play_count',
+    color_continuous_scale='viridis',  
+    template="plotly_dark",# Color scale
     title='Total Play Count by Country',
     labels={'total_play_count': 'Total Play Count'},
     hover_name='nationalities'  # Show country names on hover
 )
+plt.savefig("world_map.png")
 fig.show()
+
+track_features_country_df.dropna(inplace= True)
+track_features_country_grouped_df = track_features_country_df[["nationalities","artist_familiarity"]].groupby('nationalities', as_index=False).mean()
+track_features_country_grouped_df = track_features_country_grouped_df[(track_features_country_grouped_df['nationalities'] != 'world')  &
+    (track_features_country_grouped_df['nationalities'] != 'scandinavian')]
+
+track_features_country_grouped_df['iso_alpha_3'] = coco.convert(names=track_features_country_grouped_df['nationalities'], to='ISO3')
+track_features_country_grouped_df = track_features_country_grouped_df[['artist_hotttnesss', 'iso_alpha_3',"nationalities"]]
+unique_nationalities = track_features_country_df['nationalities'].unique()
+
+track_features_country_df.sort_values(by="artist_familiarity", ascending=False)
+track_features_country_grouped_df.sort_values(by="artist_familiarity", ascending=False)
+track_features_country_df[track_features_country_df["nationalities"] == "luxembourg"]
+
+
+plt.style.use('dark_background')
+# Create basic choropleth map
+fig = px.choropleth(
+    track_features_country_grouped_df,
+    locations='iso_alpha_3',
+    color='artist_familiarity',
+    color_continuous_scale='viridis',  
+    template="plotly_dark",# Color scale
+    title='Total Play Count by Country',
+    labels={'total_play_count': 'Total Play Count'},
+    hover_name='nationalities'  # Show country names on hover
+)
+fig.write_image("log_total_play_count_map.png")
+fig.show()
+
+
+
+
