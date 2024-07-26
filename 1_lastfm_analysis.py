@@ -132,7 +132,7 @@ for gender in gender_counts.index:
 # checking if the tags countain different languages:
 #geography_path = r"C:\Users\resha\data\geography_df.csv"
 #geography_df = pd.read_csv(geography_path)
-geography_path = r"C:\Users\corc4\data\geography_df.csv"
+#geography_path = r"C:\Users\corc4\data\geography_df.csv"
 geography_df = pd.read_csv(country_path)
 
 # function to remove words in bracks
