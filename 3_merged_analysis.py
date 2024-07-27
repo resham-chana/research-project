@@ -27,6 +27,7 @@ genres_df = pd.read_csv(r"C:\Users\resha\data\genres_df.csv")
 track_features_df = pd.merge(track_metadata_cleaned_df, play_count_grouped_df.iloc[:,[1,2]], left_on='song_id', right_on='song').drop('song', axis=1)
 track_features_df = pd.merge(track_features_df, genres_df.iloc[:,[1,2]], how='inner', on='track_id')
 track_features_df.dropna(inplace= True)
+track_features_df.to_csv(r"C:\Users\resha\data\track_features_df.csv")
 # Playcount and genre and year 
 # Year and popularity
 track_features_df['log_total_play_count'] = np.log10(track_features_df['total_play_count'])

@@ -10,12 +10,15 @@ from sklearn.neighbors import NearestNeighbors
 lastfm_diverse_tags_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_tags_df.csv")
 lastfm_diverse_pivot_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_pivot_df.csv")
 #lastfm_tags_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_tags_df.csv")
-track_metadata_df = pd.read_csv(r"C:\Users\corc4\data\track_metadata_df.csv")
-train_triplets_df = pd.read_csv(r"C:\Users\corc4\data\train_triplets_df.csv")
-play_count_grouped_df = pd.read_csv(r"C:\Users\corc4\data\play_count_grouped_df.csv")
+track_metadata_cleaned_df = pd.read_csv(r"C:\Users\resha\data\track_metadata_cleaned_df.csv")
+#train_triplets_df = pd.read_csv(r"C:\Users\corc4\data\train_triplets_df.csv")
+#play_count_grouped_df = pd.read_csv(r"C:\Users\corc4\data\play_count_grouped_df.csv")
 genres_df = pd.read_csv(r"C:\Users\corc4\data\genres_df.csv")
+MSD_merged_df = pd.read_csv(r"C:\Users\resha\data\MSD_merged_df.csv")
+track_features_df = pd.read_csv(r"C:\Users\resha\data\track_features_df.csv")
 
-
+track_metadata_cleaned_df.columns
+MSD_merged_df.columns
 #track_metadata_df.columns
 #track_df = pd.merge(track_metadata_df, play_count_grouped_df, left_on='song_id', right_on='song').drop('song', axis=1)
 #track_df = pd.merge(track_df, genres_df, how='inner', on='track_id')
@@ -34,13 +37,18 @@ max_tag_number_per_tid = lastfm_diverse_tags_df.groupby('tid')['tag_number'].max
 # Calculate the mean of these maximum tag numbers
 mean_max_tag_number = max_tag_number_per_tid.mean()
 
-lastfm_diverse_tags_df = lastfm_diverse_tags_df[lastfm_diverse_tags_df['tag_number'] >= 34]
+lastfm_diverse_tags_df = lastfm_diverse_tags_df[lastfm_diverse_tags_df['tag_number'] >= 17]
 
 
 combined_tags_df = lastfm_diverse_tags_df.groupby('tid')['cleaned_tag'].apply(lambda x: ' '.join([str(tag) for tag in x if pd.notna(tag)])).reset_index()
 
 # there are no nulls
 combined_tags_df["cleaned_tag"].isna().sum()
+
+content_df = pd.merge(track_features_df
+MSD_merged_df.columns
+content_df = pd.merge(MSD_merged_df, combined_tags_df, left_on='track_id', right_on='tid').drop('tid', axis=1)
+
 
 #Define a TF-IDF Vectorizer Object. Remove all english stop words such as 'the', 'a'
 tfidf = TfidfVectorizer(stop_words='english')
