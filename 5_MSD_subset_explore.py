@@ -35,60 +35,6 @@ MSD_df["artist_location"].nunique()
 
 unique_artist_locations = MSD_df["artist_location"].unique()
 
-
-#https://www.geeksforgeeks.org/get-the-city-state-and-country-names-from-latitude-and-longitude-using-python/
-
-geolocator = Nominatim(user_agent="geoapiExercises")
-# Function to get country from latitude and longitude
-
-def get_country(lat, lon):
-    if pd.notna(lat) and pd.notna(lon):  # Ensure lat and lon are not NaN
-        try:
-            location = geolocator.reverse((lat, lon), exactly_one=True)
-            if location and 'country' in location.raw['address']:
-                return location.raw['address']['country']
-            else:
-                return None
-        except GeocoderTimedOut:
-            # Handle timeout exception
-            return None
-        except ValueError as e:
-            # Handle other exceptions such as invalid input
-            print(f"Error: {e}")
-            return None
-    else:
-        return None
-
-
-# Apply the function to each row in the DataFrame
-MSD_df['country'] = MSD_df.apply(lambda x: get_country(x['artist_latitude'], x['artist_longitude']), axis=1)
-
-# Display the DataFrame with the new 'country' column
-print(MSD_df)
-
-MSD_df.columns
-
-
-# merge dataset with genre and playcount
-MSD_merged_df = pd.merge(MSD_df, play_count_grouped_df.iloc[:,[1,2]], left_on='song_id', right_on='song').drop('song', axis=1)
-MSD_merged_df['log_total_play_count'] = np.log10(MSD_merged_df['total_play_count'])
-
-MSD_df.columns
-checkrows = MSD_df.dropna(subset="country")
-MSD_grouped_df = MSD_merged_df[["country","log_total_play_count"]].groupby('country', as_index=False).sum()
-MSD_grouped_df = MSD_grouped_df.dropna(subset="country")
-
-MSD_grouped_df['iso_alpha_3'] = coco.convert(names=MSD_grouped_df['country'], to='ISO3')
-MSD_grouped_df = MSD_grouped_df[['log_total_play_count', 'iso_alpha_3',"country"]]
-#unique_nationalities = MSD_grouped_df['country'].unique()
-
-
-
-
-
-
-
-
 # Print all unique artist locations
 print("Unique artist locations:")
 for location in unique_artist_locations:

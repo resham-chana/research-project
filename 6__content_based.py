@@ -45,33 +45,22 @@ combined_tags_df = lastfm_diverse_tags_df.groupby('tid')['cleaned_tag'].apply(la
 # there are no nulls
 combined_tags_df["cleaned_tag"].isna().sum()
 
-content_df = pd.merge(track_features_df
-MSD_merged_df.columns
-content_df = pd.merge(MSD_merged_df, combined_tags_df, left_on='track_id', right_on='tid').drop('tid', axis=1)
+final_features = track_features_df.merge(MSD_merged_df[['track_id', 'loudness', 'country', 'mode', 'key', 'energy', 'tempo']], on='track_id', how='left')
 
+content_df = pd.merge(final_features, combined_tags_df, left_on='track_id', right_on='tid').drop('tid', axis=1)
+
+
+content_df.dropna(inplace=True) # 295 rows
 
 #Define a TF-IDF Vectorizer Object. Remove all english stop words such as 'the', 'a'
 tfidf = TfidfVectorizer(stop_words='english')
 
 #Construct the required TF-IDF matrix by fitting and transforming the data
-tfidf_matrix = tfidf.fit_transform(combined_tags_df['cleaned_tag'])
-tfidf_matrix = csr_matrix(tfidf_matrix)
+tfidf_matrix = tfidf.fit_transform(content_df['cleaned_tag'])
 
-knn = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=10, n_jobs=-1)
-knn.fit(tfidf_matrix)
+cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
 
-
-# Find the top 10 most similar items for each item
-distances, indices = knn.kneighbors(tfidf_matrix)
-
-# Convert distances to similarities
-similarities = 1 - distances
-
-# Create a sparse matrix for similarities
-from scipy.sparse import lil_matrix
-
-# Initialize an empty sparse matrix
-cosine_sim_sparse = lil_matrix((tfidf_matrix.shape[0], tfidf_matrix.shape[0]))
+indices = pd.Series(content_df.index, index=content_df['title']).drop_duplicates()
 
 # Populate the sparse matrix with the top similarities
 for i, (similarity_values, index_values) in enumerate(zip(similarities, indices)):
