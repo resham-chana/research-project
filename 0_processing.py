@@ -45,6 +45,8 @@ geography_df.to_csv(r"C:\Users\corc4\data\geography_df.csv")
 train_triplets_df = pd.read_table(triplets_path, sep='\t', header=None, names=['user', 'song', 'play_count'])
 print(train_triplets_df.head())
 # group to find total play count
+# Step 2: Group by song and sum the play counts, then filter and sort
+
 play_count_grouped_df = train_triplets_df.groupby('song', as_index=False)['play_count'].sum().rename(columns={'play_count': 'total_play_count'})
 play_count_grouped_df = play_count_grouped_df.sort_values(by='total_play_count', ascending=False)
 

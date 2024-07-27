@@ -97,7 +97,6 @@ MSD_df['country'] = MSD_df['country'].fillna(MSD_df['artist_location'].map(locat
 
 # merge dataset with genre and playcount
 MSD_merged_df = pd.merge(MSD_df, play_count_grouped_df.iloc[:,[1,2]], left_on='song_id', right_on='song').drop('song', axis=1)
-MSD_merged_df_genre = pd.merge(MSD_merged_df, genres_df.iloc[:,[1,2]], how='inner', on='track_id')
 MSD_merged_df['log_total_play_count'] = np.log10(MSD_merged_df['total_play_count'])
 
 MSD_df.columns
@@ -125,3 +124,8 @@ fig = px.choropleth(
 fig.write_image("log_total_play_count_map.png")
 fig.show()
 
+MSD_merged_df= pd.merge(MSD_merged_df, genres_df.iloc[:,[1,2]], how='inner', on='track_id')
+
+MSD_merged_df.columns
+
+lastfm_diverse_pivot_df
