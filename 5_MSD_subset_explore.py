@@ -98,8 +98,9 @@ MSD_df['country'] = MSD_df['country'].fillna(MSD_df['artist_location'].map(locat
 
 
 # merge dataset with genre and playcount
-MSD_merged_df = pd.merge(MSD_df, play_count_grouped_df.iloc[:,[1,2]], left_on='song_id', right_on='song').drop('song', axis=1)
+MSD_merged_df = pd.merge(MSD_df, play_count_grouped_df.iloc[:,[1,2]], left_on='song_id', right_on='song', how = "left").drop('song', axis=1)
 MSD_merged_df['log_total_play_count'] = np.log10(MSD_merged_df['total_play_count'])
+non_na_both = MSD_merged_df.dropna(subset=['country', 'total_play_count']).shape[0]
 
 MSD_df.columns
 checkrows = MSD_df.dropna(subset="country")
