@@ -41,7 +41,7 @@ mean_max_tag_number = max_tag_number_per_tid.mean()
 
 lastfm_tags_pruned_df = lastfm_diverse_tags_df[lastfm_diverse_tags_df['tag_number'] >= 15]
 
-
+# create one column of all tags combined for each track
 combined_tags_df = lastfm_tags_pruned_df.groupby('tid')['cleaned_tag'].apply(lambda x: ' '.join([str(tag) for tag in x if pd.notna(tag)])).reset_index()
 
 # there are no nulls
@@ -64,48 +64,147 @@ religion_counts = track_features_all_df['religion'].value_counts()
 continent_counts = track_features_all_df['continent'].value_counts()
 
 # Print the results
-print("Top 10 Nationalities:")
 print(nationalities_counts.head(10))
-print("\nTop 10 Genders:")
 print(gender_counts.head(10))
-print("\nTop 10 Languages:")
 print(language_counts.head(10))
-print("\nTop 10 Religions:")
 print(religion_counts.head(10))
-print("\nTop 10 Continents:")
 print(continent_counts.head(10))
 
 
-track_features_all_df.columns
+track_features_all_df['title'] = track_features_all_df['title'].str.lower()
+track_features_all_df['artist_name'] = track_features_all_df['artist_name'].str.lower()
 
-
-
+# drop year = 0, NAs for tags and duplicates
 content_df = track_features_all_df[track_features_all_df['year'] != 0] \
     .drop_duplicates(subset=['title', 'artist_name']) \
     .dropna(subset=['cleaned_tag']) \
     .dropna(subset=['nationalities', 'gender', 'language', 'religion', 'continent'], how='all') \
+    .rename(columns={'nationalities': 'country'}) \
     .reset_index(drop=True)
 
+content_df['decade'] = content_df['year'] - (content_df['year'] % 10)
+
+# check there are no dupilcates
 duplicates = content_df[content_df.duplicated(subset=['title', 'artist_name'], keep=False)]
+
+########################################### TF-IDF Experiment 1 #####################################################
+
+#Define a TF-IDF Vectorizer Object. Remove all english stop words such as 'the', 'a'
+tfidf = TfidfVectorizer(stop_words='english')
+
+#Construct the required TF-IDF matrix by fitting and transforming the data 
+# code adapted from https://www.datacamp.com/tutorial/recommender-systems-python
+
+tfidf_matrix = tfidf.fit_transform(content_df['cleaned_tag'])
+
+cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
+
+indices = pd.Series(content_df.index, index=content_df['track_id']).drop_duplicates()
+
+def get_recommendations(track_id, cosine_sim=cosine_sim):
+    # Get the index of the movie that matches the title
+    idx = indices[track_id]
+
+    # Get the pairwsie similarity scores of all movies with that movie
+    sim_scores = list(enumerate(cosine_sim[idx]))
+
+    # Sort the movies based on the similarity scores
+    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+
+    # Get the scores of the 10 most similar movies
+    sim_scores = sim_scores[1:25]
+
+    # Get the movie indices
+    track_indices = [i[0] for i in sim_scores]
+
+    # Return the top 10 most similar movies
+    return content_df['track_id'].iloc[track_indices]
+
+
+track_id = content_df.sample(n=1).iloc[0]['track_id']
+  # Replace with the title of the song you want recommendations for
+
+recommendations = pd.merge(get_recommendations(track_id),
+                           content_df[['track_id', 'title','country', 'artist_name' ,'gender', 'language',
+                                        'religion', 'continent', 'genre','total_play_count','decade']], 
+                           how = "left",on = "track_id")
+print(recommendations)
+
+
+def calculate_diversity(recommendations_df, attributes):
+    diversity_scores = {}
+    for attribute in attributes:
+        diversity_scores[attribute] = recommendations_df[attribute].nunique()
+    return diversity_scores
+
+# Define the attributes to measure diversity
+attributes = ['gender', 'language', 'religion', 'continent', 'country','decade']
+
+# Sample multiple tracks and evaluate recommendations
+num_samples = 10
+diversity_results = []
+
+for i in range(num_samples):
+    track_id = content_df.sample(n=1).iloc[0]['track_id']
+    recommendations = pd.merge(get_recommendations(track_id),
+                               content_df[['track_id', 'title', 'country', 'artist_name', 'gender', 'language',
+                                           'religion', 'continent', 'genre', 'total_play_count', 'decade']],
+                               how="left", on="track_id")
+    diversity_score = calculate_diversity(recommendations, attributes)
+    diversity_results.append((track_id, diversity_score))
+
+# Print the diversity results
+for track_id, diversity_score in diversity_results:
+    print(f"Track ID: {track_id} | Diversity Score: {diversity_score}")
+
+
+avg_diversity_score = {attribute: 0 for attribute in attributes}
+for _, diversity_score in diversity_results:
+    for attribute in attributes:
+        avg_diversity_score[attribute] += diversity_score[attribute]
+
+avg_diversity_score = {attribute: score / num_samples for attribute, score in avg_diversity_score.items()}
+print(f"Average Diversity Score: {avg_diversity_score}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def create_soup(x):
+    return ' '.join(x['country']) + ' ' + ' '.join(x['gender']) + ' ' + x['religion'] + ' ' + ' '.join(x['continent'])
 
 
 #Define a TF-IDF Vectorizer Object. Remove all english stop words such as 'the', 'a'
 tfidf = TfidfVectorizer(stop_words='english')
 
-#Construct the required TF-IDF matrix by fitting and transforming the data
+#Construct the required TF-IDF matrix by fitting and transforming the data 
+# code adapted from https://www.datacamp.com/tutorial/recommender-systems-python
+
 tfidf_matrix = tfidf.fit_transform(content_df['cleaned_tag'])
 
 cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
 
-indices = pd.Series(content_df.index, index=content_df['title']).drop_duplicates()
+indices = pd.Series(content_df.index, index=content_df['track_id']).drop_duplicates()
 
-def get_recommendations(title, feature, cosine_sim=cosine_sim, top_n=10):
+def get_recommendations(track_id, feature, cosine_sim=cosine_sim, top_n=10):
     # Check if the title is in the DataFrame
     if title not in indices:
         return "Title not found in database."
 
     # Get the index of the track that matches the title
-    idx = indices[title]
+    idx = indices[track_id]
 
     # Get the pairwise similarity scores of all tracks with that track
     sim_scores = list(enumerate(cosine_sim[idx]))
@@ -146,12 +245,26 @@ def get_recommendations(title, feature, cosine_sim=cosine_sim, top_n=10):
     return recommended_tracks[['title', 'artist_name', 'genre', 'language', 'nationalities', feature]].head(top_n)
 
 
-title = content_df.sample(n=1).iloc[0]['title']
+track_id = content_df.sample(n=1).iloc[0]['track_id']
   # Replace with the title of the song you want recommendations for
 feature = 'continent'  # Replace with the feature you want to use for diversity
 
-recommendations = get_recommendations(title, feature)
+recommendations = get_recommendations(track_id, feature)
 print(recommendations)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -262,6 +375,30 @@ def mean_average_precision(df, feature, k=10):
 # Example usage
 map_score = mean_average_precision(content_df, 'genre')
 print(f"Mean Average Precision: {map_score:.2f}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

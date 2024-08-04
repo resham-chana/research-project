@@ -300,3 +300,9 @@ lastfm_diverse_pivot_df = pd.merge(lastfm_diverse_pivot_df,
 #lastfm_diverse_pivot_df.to_csv(r"C:\Users\corc4\data\lastfm_diverse_pivot_df.csv")  
 lastfm_diverse_tags_df.to_csv(r"C:\Users\resha\data\lastfm_diverse_tags_df.csv")  
 lastfm_diverse_pivot_df.to_csv(r"C:\Users\resha\data\lastfm_diverse_pivot_df.csv")  
+
+nationalities_counts = lastfm_diverse_pivot_df['nationalities'].value_counts()
+gender_counts = lastfm_diverse_pivot_df['gender'].value_counts()
+language_counts = lastfm_diverse_pivot_df['language'].value_counts()
+religion_counts = lastfm_diverse_pivot_df['religion'].value_counts()
+continent_counts = lastfm_diverse_pivot_df['continent'].value_counts()
