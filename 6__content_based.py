@@ -4,6 +4,15 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 from scipy.sparse import csr_matrix
 from sklearn.neighbors import NearestNeighbors
+import pandas as pd
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.cluster import KMeans
+import random
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import silhouette_score
 
 
 #lastfm_diverse_tags_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_tags_df.csv")
@@ -87,7 +96,7 @@ content_df['decade'] = content_df['year'] - (content_df['year'] % 10)
 # check there are no dupilcates
 duplicates = content_df[content_df.duplicated(subset=['title', 'artist_name'], keep=False)]
 
-########################################### TF-IDF Experiment 1 #####################################################
+########################################### Tag Based Content Recommender Using TFIDF #####################################################
 
 #Define a TF-IDF Vectorizer Object. Remove all english stop words such as 'the', 'a'
 tfidf = TfidfVectorizer(stop_words='english')
@@ -101,7 +110,7 @@ cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
 
 indices = pd.Series(content_df.index, index=content_df['track_id']).drop_duplicates()
 
-def get_recommendations(track_id, cosine_sim=cosine_sim):
+def get_recommendations_tdidf(track_id, cosine_sim=cosine_sim):
     # Get the index of the movie that matches the title
     idx = indices[track_id]
 
@@ -122,13 +131,15 @@ def get_recommendations(track_id, cosine_sim=cosine_sim):
 
 
 track_id = content_df.sample(n=1).iloc[0]['track_id']
+song = content_df[content_df['track_id'] == track_id][["title","artist_name"]]
+
   # Replace with the title of the song you want recommendations for
 
-recommendations = pd.merge(get_recommendations(track_id),
+recommendations_tdidf = pd.merge(get_recommendations_tdidf(track_id),
                            content_df[['track_id', 'title','country', 'artist_name' ,'gender', 'language',
                                         'religion', 'continent', 'genre','total_play_count','decade']], 
                            how = "left",on = "track_id")
-print(recommendations)
+print(recommendations_tdidf)
 
 
 def calculate_diversity(recommendations_df, attributes):
@@ -140,31 +151,171 @@ def calculate_diversity(recommendations_df, attributes):
 # Define the attributes to measure diversity
 attributes = ['gender', 'language', 'religion', 'continent', 'country','decade']
 
+calculate_diversity(recommendations_tdidf, attributes)
 # Sample multiple tracks and evaluate recommendations
 num_samples = 10
-diversity_results = []
+diversity_results_tdidf = []
 
 for i in range(num_samples):
     track_id = content_df.sample(n=1).iloc[0]['track_id']
-    recommendations = pd.merge(get_recommendations(track_id),
+    recommendations_tdidf = pd.merge(get_recommendations_tdidf(track_id),
                                content_df[['track_id', 'title', 'country', 'artist_name', 'gender', 'language',
                                            'religion', 'continent', 'genre', 'total_play_count', 'decade']],
                                how="left", on="track_id")
-    diversity_score = calculate_diversity(recommendations, attributes)
-    diversity_results.append((track_id, diversity_score))
+    diversity_score_tdidf = calculate_diversity(recommendations_tdidf, attributes)
+    diversity_results_tdidf.append((track_id, diversity_score_tdidf))
 
 # Print the diversity results
-for track_id, diversity_score in diversity_results:
-    print(f"Track ID: {track_id} | Diversity Score: {diversity_score}")
+for track_id, diversity_score_tdidf in diversity_results_tdidf:
+    print(f"Diversity Score: {diversity_score_tdidf}")
 
 
-avg_diversity_score = {attribute: 0 for attribute in attributes}
-for _, diversity_score in diversity_results:
+avgerage_diversity_score_tdidf = {attribute: 0 for attribute in attributes}
+for _, diversity_score_tdidf in diversity_results_tdidf:
     for attribute in attributes:
-        avg_diversity_score[attribute] += diversity_score[attribute]
+        avgerage_diversity_score_tdidf[attribute] += diversity_score_tdidf[attribute]
 
-avg_diversity_score = {attribute: score / num_samples for attribute, score in avg_diversity_score.items()}
-print(f"Average Diversity Score: {avg_diversity_score}")
+avgerage_diversity_score_tdidf = {attribute: score / num_samples for attribute, 
+                            score in avgerage_diversity_score_tdidf.items()}
+print(f"Average Diversity Score: {avgerage_diversity_score_tdidf}")
+
+
+########################################### Tag Based Content Recommender Using K Means #####################################################
+
+# using code from https://www.datacamp.com/tutorial/k-means-clustering-python and https://www.datacamp.com/tutorial/recommender-systems-python
+# Function to create the soup
+def create_soup(row, main_factors):
+    soup = ' '.join([str(row[col]) for col in main_factors])
+    return soup
+
+# Main factors for similarity
+main_factors = ['artist_name', 'cleaned_tag', 'genre']
+
+# Create the soup
+content_df['soup'] = content_df.apply(create_soup, main_factors=main_factors, axis=1)
+
+# Create the count matrix and cosine similarity matrix
+count = CountVectorizer(stop_words='english')
+count_matrix = count.fit_transform(content_df['soup'])
+cosine_sim2 = cosine_similarity(count_matrix, count_matrix)
+
+# Reset index and create a Series for track_id indices
+content_df = content_df.reset_index()
+indices = pd.Series(content_df.index, index=content_df['track_id'])
+
+# Clustering based on diversity features
+diversity_features = ['country', 'gender', 'language', 'religion', 'continent','decade']
+df_diversity = content_df[diversity_features].fillna('Unknown')
+
+
+# One-hot encode the diversity features
+encoder = OneHotEncoder()
+encoded_features = encoder.fit_transform(df_diversity)
+encoded_features_dense = encoded_features.toarray()
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(encoded_features_dense, content_df['track_id'], test_size=0.33, random_state=0)
+
+# Perform k-means clustering
+kmeans = KMeans(n_clusters = 10, random_state = 0, n_init='auto')
+kmeans.fit(X_train)
+
+from sklearn.manifold import TSNE
+
+
+# visualise with tsne 
+import seaborn as sns
+import matplotlib.pyplot as plt
+tsne = TSNE(n_components=2, perplexity=30, max_iter=300, random_state=0)
+tsne_result = tsne.fit_transform(encoded_features_dense)
+
+# Plot t-SNE result
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x=tsne_result[:, 0], y=tsne_result[:, 1], hue=content_df['cluster'], palette='viridis', legend='full')
+plt.title('t-SNE Clustering Visualization')
+plt.show()
+
+
+
+# Recommendation function
+def get_recommendations_kmeans(track_id, cosine_sim=cosine_sim2):
+    idx = indices[track_id]
+    sim_scores = list(enumerate(cosine_sim[idx]))
+    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+    sim_scores = sim_scores[1:]  # Exclude the original track
+
+    recommended_indices = [i[0] for i in sim_scores]
+    recommended_clusters = content_df['cluster'].iloc[recommended_indices].values
+    
+    # Select tracks from different clusters
+    unique_clusters = list(set(recommended_clusters))
+    final_recommendations = []
+
+    for cluster in unique_clusters:
+        cluster_indices = [i for i in recommended_indices if content_df['cluster'].iloc[i] == cluster]
+        if cluster_indices:
+            final_recommendations.append(random.choice(cluster_indices))
+        if len(final_recommendations) >= 25:
+            break
+
+    return content_df['track_id'].iloc[final_recommendations]
+
+track_id = content_df.sample(n=1).iloc[0]['track_id']
+song = content_df[content_df['track_id'] == track_id][["title","artist_name"]]
+
+  # Replace with the title of the song you want recommendations for
+
+recommendations_kmeans = pd.merge(get_recommendations_kmeans(track_id),
+                           content_df[['track_id', 'title','country', 'artist_name' ,'gender', 'language',
+                                        'religion', 'continent', 'genre','total_play_count','decade']], 
+                           how = "left",on = "track_id")
+print(recommendations_kmeans)
+
+
+# Define the attributes to measure diversity
+attributes = ['gender', 'language', 'religion', 'continent', 'country','decade']
+
+calculate_diversity(get_recommendations_kmeans, attributes)
+# Sample multiple tracks and evaluate recommendations
+num_samples = 10
+diversity_results_kmeans = []
+
+for i in range(num_samples):
+    track_id = content_df.sample(n=1).iloc[0]['track_id']
+    recommendations_kmeans = pd.merge(get_recommendations_kmeans(track_id),
+                               content_df[['track_id', 'title', 'country', 'artist_name', 'gender', 'language',
+                                           'religion', 'continent', 'genre', 'total_play_count', 'decade']],
+                               how="left", on="track_id")
+    diversity_score_kmeans = calculate_diversity(recommendations_kmeans, attributes)
+    diversity_results_kmeans.append((track_id, diversity_score_kmeans))
+
+# Print the diversity results
+for track_id, diversity_score_kmeans in diversity_results_kmeans:
+    print(f"Diversity Score: {diversity_score_kmeans}")
+
+
+avgerage_diversity_score_kmeans = {attribute: 0 for attribute in attributes}
+for _, diversity_score in diversity_results_kmeans:
+    for attribute in attributes:
+        avgerage_diversity_score_kmeans[attribute] += diversity_score[attribute]
+
+avgerage_diversity_score_kmeans = {attribute: score / num_samples for attribute, 
+                            score in avgerage_diversity_score_kmeans.items()}
+print(f"Average Diversity Score: {avgerage_diversity_score_kmeans}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -464,12 +615,12 @@ def get_recommendations(title, cosine_sim=cosine_sim, top_n=10):
 
 
 # Populate the sparse matrix with the top similarities
-for i, (similarity_values, index_values) in enumerate(zip(similarities, indices)):
-    for similarity, index in zip(similarity_values, index_values):
-        cosine_sim_sparse[i, index] = similarity
+#for i, (similarity_values, index_values) in enumerate(zip(similarities, indices)):
+#    for similarity, index in zip(similarity_values, index_values):
+#        cosine_sim_sparse[i, index] = similarity#
 
-# Convert the matrix to CSR format for efficient storage and computation
-cosine_sim_sparse = cosine_sim_sparse.tocsr()
+## Convert the matrix to CSR format for efficient storage and computation
+#cosine_sim_sparse = cosine_sim_sparse.tocsr()
 
 
 
@@ -524,76 +675,76 @@ import torch
 import torchtext
 from torchtext.vocab import vocab
 
-glove_model = api.load("glove-wiki-gigaword-300")
-https://nlp.stanford.edu/pubs/glove.pdf
-glove_model["you are a beautiful person"]
+#glove_model = api.load("glove-wiki-gigaword-300")
+#https://nlp.stanford.edu/pubs/glove.pdf
+#glove_model["you are a beautiful person"]
 
-glove = torchtext.vocab.GloVe(name="6B", # trained on Wikipedia 2014 corpus
-                              dim=100)    # embedding size = 50
-glove_model['cat']
-glove["cat"]
+#glove = torchtext.vocab.GloVe(name="6B", # trained on Wikipedia 2014 corpus
+#                              dim=100)    # embedding size = 50
+#glove_model['cat']
+#glove["cat"]
 # pivoting tags 
-lastfm_cleaned_tags_df = lastfm_diverse_tags_df.iloc[:,1:5]
+#lastfm_cleaned_tags_df = lastfm_diverse_tags_df.iloc[:,1:5]
 #lastfm_cleaned_tags_df['tag_number'] = lastfm_tags_df.groupby('tid').cumcount() + 1
 #lastfm_cleaned_pivot_df = lastfm_tags_df.pivot(index='tid', columns='tag_number', values='cleaned_tag').reset_index()
 #lastfm_cleaned_pivot_df.columns = ['tid'] + [f'tag{i}' for i in range(1, len(lastfm_cleaned_pivot_df.columns))]
 
-print(lastfm_cleaned_tags_df["cleaned_tag"].unique()[:50])
+#print(lastfm_cleaned_tags_df["cleaned_tag"].unique()[:50])#
 
-def get_tag_vector(tag, model):
-    words = tag.split()
-    vectors = [model[word] for word in words if word in model]
-    if vectors:
-        return np.mean(vectors, axis=0)
-    else:
-        return None
+#def get_tag_vector(tag, model):
+#    words = tag.split()
+#    vectors = [model[word] for word in words if word in model]
+#    if vectors:
+#        return np.mean(vectors, axis=0)
+#    else:
+#        return None
 
-tags = lastfm_pivot_df.iloc[:, 1:].stack().unique()  # Get unique tags, excluding NaNs
+#tags = lastfm_pivot_df.iloc[:, 1:].stack().unique()  # Get unique tags, excluding NaNs#
+#
+#tag_vectors = {}
 
-tag_vectors = {}
+#for tag in tags:
+#    if pd.notna(tag):
+#        vector = get_tag_vector(tag, glove_model)
+#        if vector is not None:
+#            tag_vectors[tag] = vector
 
-for tag in tags:
-    if pd.notna(tag):
-        vector = get_tag_vector(tag, glove_model)
-        if vector is not None:
-            tag_vectors[tag] = vector
+#def compute_song_vector(tags, tag_vectors):
+#    vectors = []
+#    for tag in tags:
+#        if tag in tag_vectors:
+#            vectors.append(tag_vectors[tag])
+#    if vectors:
+ #       return np.mean(vectors, axis=0)
+#    else:
+#        return np.zeros(len(next(iter(tag_vectors.values()))))
 
-def compute_song_vector(tags, tag_vectors):
-    vectors = []
-    for tag in tags:
-        if tag in tag_vectors:
-            vectors.append(tag_vectors[tag])
-    if vectors:
-        return np.mean(vectors, axis=0)
-    else:
-        return np.zeros(len(next(iter(tag_vectors.values()))))
+#lastfm_pivot_df['tags'] = lastfm_pivot_df.iloc[:, 1:].apply(lambda row: row.dropna().tolist(), axis=1)#
 
-lastfm_pivot_df['tags'] = lastfm_pivot_df.iloc[:, 1:].apply(lambda row: row.dropna().tolist(), axis=1)
+#lastfm_pivot_df['song_vector'] = lastfm_pivot_df['tags'].apply(lambda tags: compute_song_vector(tags, ta#g_vectors))
 
-lastfm_pivot_df['song_vector'] = lastfm_pivot_df['tags'].apply(lambda tags: compute_song_vector(tags, tag_vectors))
+#song_vectors = np.stack(lastfm_pivot_df['song_vector'].values)
 
-song_vectors = np.stack(lastfm_pivot_df['song_vector'].values)
+#similarity_matrix = cosine_similarity(song_vectors)
 
-similarity_matrix = cosine_similarity(song_vectors)
-
-similarity_df = pd.DataFrame(similarity_matrix, index=lastfm_pivot_df['tid'], columns=lastfm_pivot_df['tid'])
-print(similarity_df)
+#similarity_df = pd.DataFrame(similarity_matrix, index=lastfm_pivot_df['tid'], columns=lastfm_pivot_df['tid'])
+#print(similarity_df)
 
 ########################## getting genres ##################################
 
 # get most popular tags:
 
-tag_counts = lastfm_tags_df["tag"].value_counts()
+#tag_counts = lastfm_tags_df["tag"].value_counts()
 
-for tag in tag_counts[:1000].index:
-    print(tag)
+#for tag in tag_counts[:1000].index:
+#    print(tag)
 
-tag_counts.to_csv('tags.csv', index=True)
+#tag_counts.to_csv('tags.csv', index=True)
 
-lastfm_tags_df 
+#lastfm_tags_df 
 
 # unique tags:
 
-len(lastfm_tags_df["tag"].unique()) # 505215 songs with 522366 unique tags
+#len(lastfm_tags_df["tag"].unique()) # 505215 songs with 522366 unique tags
 
 #"male", "female",""
