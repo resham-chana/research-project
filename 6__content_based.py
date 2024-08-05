@@ -13,6 +13,8 @@ from sklearn.cluster import KMeans
 import random
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import silhouette_score
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 #lastfm_diverse_tags_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_tags_df.csv")
@@ -211,28 +213,37 @@ df_diversity = content_df[diversity_features].fillna('Unknown')
 # One-hot encode the diversity features
 encoder = OneHotEncoder()
 encoded_features = encoder.fit_transform(df_diversity)
-encoded_features_dense = encoded_features.toarray()
+#encoded_features_dense = encoded_features.toarray()
 
-# Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(encoded_features_dense, content_df['track_id'], test_size=0.33, random_state=0)
+# One-hot encode the diversity features
+encoder = OneHotEncoder()
+encoded_features = encoder.fit_transform(df_diversity)
 
 # Perform k-means clustering
-kmeans = KMeans(n_clusters = 10, random_state = 0, n_init='auto')
-kmeans.fit(X_train)
+kmeans = KMeans(n_clusters=60, random_state=0)
+content_df['cluster'] = kmeans.fit_predict(encoded_features)
 
-from sklearn.manifold import TSNE
+K = range(2, 10)
+fits = []
+score = []
 
 
-# visualise with tsne 
-import seaborn as sns
-import matplotlib.pyplot as plt
-tsne = TSNE(n_components=2, perplexity=30, max_iter=300, random_state=0)
-tsne_result = tsne.fit_transform(encoded_features_dense)
+for k in K:
+    # train the model for current value of k on training data
+    model = KMeans(n_clusters = k, random_state = 0, n_init='auto').fit(encoded_features)
+    
+    # append the model to fits
+    fits.append(model)
+    
+    # Append the silhouette score to scores
+    score.append(silhouette_score(encoded_features, model.labels_, metric='euclidean'))
 
-# Plot t-SNE result
-plt.figure(figsize=(10, 6))
-sns.scatterplot(x=tsne_result[:, 0], y=tsne_result[:, 1], hue=content_df['cluster'], palette='viridis', legend='full')
-plt.title('t-SNE Clustering Visualization')
+plt.style.use("dark_background")
+sns.lineplot(x=K, y=score, color='#4CAF50')
+plt.title('Number of clusters vs. Silhouette Score')
+plt.xlabel('Number of clusters (k)')
+plt.ylabel('Silhouette Score')
+plt.savefig("sil_score.png")
 plt.show()
 
 
@@ -304,7 +315,7 @@ avgerage_diversity_score_kmeans = {attribute: score / num_samples for attribute,
 print(f"Average Diversity Score: {avgerage_diversity_score_kmeans}")
 
 
-
+###################################################################################################################################
 
 
 
