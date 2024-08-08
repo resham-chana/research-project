@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsRegressor, NearestNeighbors
 import sklearn
@@ -8,13 +8,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.sparse.linalg import svds
 import scipy.sparse as sp
+from sklearn.metrics import r2_score
 
 
 #https://github.com/d-elicio/Music-Recommender-System-from-scratch/blob/main/Music_Recommender_Project.ipynb
 
-lastfm_diverse_tags_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_tags_df.csv")
-lastfm_diverse_pivot_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_pivot_df.csv")
-track_metadata_cleaned_df = pd.read_csv(r"C:\Users\resha\data\track_metadata_cleaned_df.csv")  
+#lastfm_diverse_tags_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_tags_df.csv")
+#lastfm_diverse_pivot_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_pivot_df.csv")
+#track_metadata_cleaned_df = pd.read_csv(r"C:\Users\resha\data\track_metadata_cleaned_df.csv")  
 train_triplets_df = pd.read_csv(r"C:\Users\resha\data\train_triplets_df.csv")
 play_count_grouped_df = pd.read_csv(r"C:\Users\resha\data\play_count_grouped_df.csv")
 genres_df = pd.read_csv(r"C:\Users\resha\data\genres_df.csv")
@@ -54,7 +55,7 @@ upper = Q3 + 1.5*IQR
 
 #filtering songs only listened to less than 3 times 
 collab_df['play_count'].mean() # this is 3
-collab_df = collab_df[(collab_df['play_count'] >= 3)]
+collab_df = collab_df[(collab_df['play_count'] >= 10)]
 
 collab_df.sort_values(by="play_count", ascending=True).head(10)
 collab_df.sort_values(by="total_play_count", ascending=True).head(10)
@@ -62,7 +63,7 @@ collab_df.sort_values(by="total_play_count", ascending=True).head(10)
 # only include users that have listened to 10 songs or more 
 user_song_counts = collab_df.groupby('user')['track_id'].nunique()
 user_song_counts.mean() # this is 1
-users_more_than_10_songs = user_song_counts[user_song_counts > 1].index
+users_more_than_10_songs = user_song_counts[user_song_counts > 10].index
 
 # Filter the DataFrame to include only users who have listened to more than 10 songs
 collab_df = collab_df[collab_df['user'].isin(users_more_than_10_songs)]
@@ -86,7 +87,7 @@ collab_df['rating'] = min_max_normalize(collab_df['play_count'])
 collab_df['rating'].plot(kind='hist', bins=1000, figsize=(10, 6))
 plt.show()
 
-######################################### collaborative filtering system ############################
+######################################### collaborative filtering system with matrix factorisation ############################
 # https://campus.datacamp.com/courses/building-recommendation-engines-in-python/collaborative-filtering?ex=2
 
 
@@ -121,7 +122,6 @@ U, sigma, Vt = svds(user_ratings_sparse)
 sigma = np.diag(sigma)
 print(sigma)
 
-
 # Dot product of U and sigma
 U_sigma = np.dot(U, sigma)
 
@@ -148,156 +148,437 @@ user_example_ratings = calc_pred_ratings_df.loc['fff9bd021bf6e07936883b9bb045207
 print(user_example_ratings)
 
 
-############################################# evaluate ####################################################
+############################################# evaluate with a test and training set ####################################################
 
+user_ratings_df = collab_df.pivot(index='user',columns='track_id',values='rating')
 
+# Flatten the DataFrame into a list of (user, track_id, rating) tuples
+ratings = user_ratings_df.stack().reset_index()
+ratings.columns = ['user', 'track_id', 'rating']
 
-# Split the data into training and test sets
-flattened_df = user_ratings_df.stack().reset_index()
-flattened_df.columns = ['user', 'track_id', 'rating']
-train_data, test_data = train_test_split(flattened_df, test_size=0.1, random_state=42)
+# Split into train and test sets
+train_data, test_data = train_test_split(ratings, test_size=0.2, random_state=42)
 
-# Pivot back to the original DataFrame format for train and test sets
+# Convert train and test sets back to pivot format (so they match the original user_ratings_df structure)
 train_df = train_data.pivot(index='user', columns='track_id', values='rating')
 test_df = test_data.pivot(index='user', columns='track_id', values='rating')
 
-# Ensure the test set has the same structure as the predicted ratings
-test_df = test_df.reindex(index=calc_pred_ratings_df.index, columns=calc_pred_ratings_df.columns)
-test_df.fillna(0, inplace=True)
+# Step 1: Preprocessing the Training Data
+# Get the average rating for each user in the training set
+avg_ratings = train_df.mean(axis=1)
+# Center each user's ratings around 0
+user_ratings_centered_train_df = train_df.sub(avg_ratings, axis=0)
+# Fill in the missing data with 0s
+user_ratings_centered_train_df.fillna(0, inplace=True)
+# Convert the centered ratings DataFrame to a sparse matrix
+user_ratings_sparse = sp.csr_matrix(user_ratings_centered_train_df.values)
 
-# Calculate RMSE on the test set
+# Perform matrix factorization (SVD)
+U, sigma, Vt = svds(user_ratings_sparse, k=60)
+sigma = np.diag(sigma)
+
+# Reconstruct the ratings matrix
+U_sigma_Vt = np.dot(np.dot(U, sigma), Vt)
+
+# Add the average ratings back in
+uncentered_ratings = U_sigma_Vt + avg_ratings.values.reshape(-1, 1)
+
+# Create a DataFrame of the predicted ratings
+calc_pred_ratings_df = pd.DataFrame(uncentered_ratings, 
+                                    index=train_df.index, 
+                                    columns=train_df.columns)
+
+
+######################################## evaluate ###############################################################
+
+# Extract the ground truth from the test set
 actual_values = test_df.values
-predicted_values = calc_pred_ratings_df.values
+
+# Reindex the predicted ratings to match the test DataFrame
+predicted_values = calc_pred_ratings_df.reindex_like(test_df).values
+
+# Create a mask for non-NaN values in the actual test set
 mask = ~np.isnan(actual_values)
 
-rmse = mean_squared_error(actual_values[mask], predicted_values[mask], squared=False)
-print(f"RMSE: {rmse}")
+# Filter out NaN values from both actual and predicted values using the mask
+filtered_actual_values = actual_values[mask]
+filtered_predicted_values = predicted_values[mask]
 
-# Example of user-specific ratings
-user_example_ratings = calc_pred_ratings_df.loc['specific_user'].sort_values(ascending=False)
-print(user_example_ratings)
+# Ensure no NaN values remain in the filtered arrays
+filtered_actual_values = filtered_actual_values[~np.isnan(filtered_predicted_values)]
+filtered_predicted_values = filtered_predicted_values[~np.isnan(filtered_predicted_values)]
 
+# Calculate RMSE on the test set, considering only non-NaN values
+test_rmse = mean_squared_error(filtered_actual_values, filtered_predicted_values, squared=False)
+print(f'Test RMSE: {test_rmse}')
 
+test_r2 = r2_score(filtered_actual_values, filtered_predicted_values)
 
 
+############################################################ with plays instead ############################################################
+#############################################################################################################################################
 
 
+############################################# evaluate with a test and training set ####################################################
+test_collab = collab_df.copy()
+#filtering songs only listened to less than 3 times 
+test_collab['play_count'].mean() # this is 3
+test_collab = test_collab[(test_collab['play_count'] >= 20)]
 
+test_collab.sort_values(by="play_count", ascending=True).head(10)
+test_collab.sort_values(by="total_play_count", ascending=True).head(10)
 
+# only include users that have listened to 10 songs or more 
+user_song_counts = test_collab.groupby('user')['track_id'].nunique()
+user_song_counts.mean() # this is 1
+users_more_than_10_songs = user_song_counts[user_song_counts >= 20].index
 
+# Filter the DataFrame to include only users who have listened to more than 10 songs
+test_collab = test_collab[test_collab['user'].isin(users_more_than_10_songs)]
 
 
+user_ratings_df = test_collab.pivot(index='user',columns='track_id',values='play_count')
 
+# Flatten the DataFrame into a list of (user, track_id, rating) tuples
+ratings = user_ratings_df.stack().reset_index()
+ratings.columns = ['user', 'track_id', 'play_count']
 
+# Split into train and test sets
+train_data, test_data = train_test_split(ratings, test_size=0.2, random_state=42)
 
+# Convert train and test sets back to pivot format (so they match the original user_ratings_df structure)
+train_df = train_data.pivot(index='user', columns='track_id', values='play_count')
+test_df = test_data.pivot(index='user', columns='track_id', values='play_count')
 
+# Step 1: Preprocessing the Training Data
+# Get the average rating for each user in the training set
+avg_ratings = train_df.mean(axis=1)
+# Center each user's ratings around 0
+user_ratings_centered_train_df = train_df.sub(avg_ratings, axis=0)
+# Fill in the missing data with 0s
+user_ratings_centered_train_df.fillna(0, inplace=True)
+# Convert the centered ratings DataFrame to a sparse matrix
+user_ratings_sparse = sp.csr_matrix(user_ratings_centered_train_df.values)
 
+# Perform matrix factorization (SVD)
+U, sigma, Vt = svds(user_ratings_sparse, k=60)
+sigma = np.diag(sigma)
 
+# Reconstruct the ratings matrix
+U_sigma_Vt = np.dot(np.dot(U, sigma), Vt)
 
+# Add the average ratings back in
+uncentered_ratings = U_sigma_Vt + avg_ratings.values.reshape(-1, 1)
 
+# Create a DataFrame of the predicted ratings
+calc_pred_ratings_df = pd.DataFrame(uncentered_ratings, 
+                                    index=train_df.index, 
+                                    columns=train_df.columns)
 
 
 
+# Extract the ground truth from the test set
+actual_values = test_df.values
 
+# Reindex the predicted ratings to match the test DataFrame
+predicted_values = calc_pred_ratings_df.reindex_like(test_df).values
 
+# Create a mask for non-NaN values in the actual test set
+mask = ~np.isnan(actual_values)
 
+# Filter out NaN values from both actual and predicted values using the mask
+filtered_actual_values = actual_values[mask]
+filtered_predicted_values = predicted_values[mask]
 
+# Ensure no NaN values remain in the filtered arrays
+filtered_actual_values = filtered_actual_values[~np.isnan(filtered_predicted_values)]
+filtered_predicted_values = filtered_predicted_values[~np.isnan(filtered_predicted_values)]
 
+# Calculate RMSE on the test set, considering only non-NaN values
+test_rmse = mean_squared_error(filtered_actual_values, filtered_predicted_values, squared=False)
+print(f'Test RMSE: {test_rmse}')
+test_mae = mean_absolute_error(filtered_actual_values, filtered_predicted_values)
+print(f'Test MAE: {test_mae}')
 
+test_r2 = r2_score(filtered_actual_values, filtered_predicted_values)
+print(f'Test R square: {test_r2}')
 
 
+################################################################################################################################################
 
+############################################################ with ratings ############################################################
 
 
+############################################# evaluate with a test and training set ####################################################
+test_collab = collab_df.copy()
+#filtering songs only listened to less than 3 times 
+test_collab['play_count'].mean() # this is 3
+test_collab = test_collab[(test_collab['play_count'] >= 5)]
 
+test_collab.sort_values(by="play_count", ascending=True).head(10)
+test_collab.sort_values(by="total_play_count", ascending=True).head(10)
 
-user_ratings.sort_values(by='rating', ascending=False)
+# only include users that have listened to 10 songs or more 
+user_song_counts = test_collab.groupby('user')['track_id'].nunique()
+user_song_counts.mean() # this is 1
+users_more_than_10_songs = user_song_counts[user_song_counts >= 20].index
 
-# https://campus.datacamp.com/courses/building-recommendation-engines-in-python/collaborative-filtering?ex=2
+# Filter the DataFrame to include only users who have listened to more than 10 songs
+test_collab = test_collab[test_collab['user'].isin(users_more_than_10_songs)]
 
-user_ratings_table = user_ratings.pivot(index='userId',columns='title',values='rating')
+# Show the shape of the new DataFrame to verify
+print("New Shape: ", test_collab.shape)
 
+# Display the first few rows to verify the data
+test_collab.head()
 
+test_collab
 
+# normalise
 
+def min_max_normalize(series):
+    return (series - series.min()) / (series.max() - series.min()) * 4 + 1
 
+# Apply normalization to play_count
+test_collab['rating'] = min_max_normalize(test_collab['play_count'])
 
+#test_collab['rating'].plot(kind='hist', bins=1000, figsize=(10, 6))
+#plt.show()
 
-# Count the occupied cells
-sparsity_count = user_ratings_df.isnull().values.sum()
 
-# Count all cells
-full_count = user_ratings_df.size
+user_ratings_df = test_collab.pivot(index='user',columns='track_id',values='rating')
 
-# Find the sparsity of the DataFrame
-sparsity = sparsity_count / full_count
-print(sparsity)
+# Flatten the DataFrame into a list of (user, track_id, rating) tuples
+ratings = user_ratings_df.stack().reset_index()
+ratings.columns = ['user', 'track_id', 'rating']
 
+# Split into train and test sets
+train_data, test_data = train_test_split(ratings, test_size=0.2, random_state=42)
 
+# Convert train and test sets back to pivot format (so they match the original user_ratings_df structure)
+train_df = train_data.pivot(index='user', columns='track_id', values='rating')
+test_df = test_data.pivot(index='user', columns='track_id', values='rating')
 
+# Step 1: Preprocessing the Training Data
+# Get the average rating for each user in the training set
+avg_ratings = train_df.mean(axis=1)
+# Center each user's ratings around 0
+user_ratings_centered_train_df = train_df.sub(avg_ratings, axis=0)
+# Fill in the missing data with 0s
+user_ratings_centered_train_df.fillna(0, inplace=True)
+# Convert the centered ratings DataFrame to a sparse matrix
+user_ratings_sparse = sp.csr_matrix(user_ratings_centered_train_df.values)
 
+# Perform matrix factorization (SVD)
+U, sigma, Vt = svds(user_ratings_sparse, k=70)
+sigma = np.diag(sigma)
 
+# Reconstruct the ratings matrix
+U_sigma_Vt = np.dot(np.dot(U, sigma), Vt)
 
+# Add the average ratings back in
+uncentered_ratings = U_sigma_Vt + avg_ratings.values.reshape(-1, 1)
 
+# Create a DataFrame of the predicted ratings
+calc_pred_ratings_df = pd.DataFrame(uncentered_ratings, 
+                                    index=train_df.index, 
+                                    columns=train_df.columns)
 
 
 
+# Extract the ground truth from the test set
+actual_values = test_df.values
 
+# Reindex the predicted ratings to match the test DataFrame
+predicted_values = calc_pred_ratings_df.reindex_like(test_df).values
 
+# Create a mask for non-NaN values in the actual test set
+mask = ~np.isnan(actual_values)
 
-# Create a user-item matrix
-user_item_matrix = df.pivot(index='user', columns='song', values='play_count').fillna(0)
+# Filter out NaN values from both actual and predicted values using the mask
+filtered_actual_values = actual_values[mask]
+filtered_predicted_values = predicted_values[mask]
 
-# Train the KNN model
-model_knn = NearestNeighbors(metric='cosine', algorithm='brute')
-model_knn.fit(user_item_matrix)
+# Ensure no NaN values remain in the filtered arrays
+filtered_actual_values = filtered_actual_values[~np.isnan(filtered_predicted_values)]
+filtered_predicted_values = filtered_predicted_values[~np.isnan(filtered_predicted_values)]
 
-# Function to get song recommendations for a user
-def get_recommendations(user, n_neighbors=3):
-    distances, indices = model_knn.kneighbors(user_item_matrix.loc[user].values.reshape(1, -1), n_neighbors=n_neighbors)
-    
-    recommendations = []
-    for i in range(0, len(distances.flatten())):
-        if i == 0:
-            print(f'Recommendations for {user}:\n')
-        else:
-            recommendations.append(user_item_matrix.index[indices.flatten()[i]])
-            print(f'{i}: {user_item_matrix.index[indices.flatten()[i]]}, with distance of {distances.flatten()[i]}')
-    
-    return recommendations
+# Calculate RMSE on the test set, considering only non-NaN values
+test_rmse = mean_squared_error(filtered_actual_values, filtered_predicted_values, squared=False)
+print(f'Test RMSE: {test_rmse}')
+test_mae = mean_absolute_error(filtered_actual_values, filtered_predicted_values)
+print((f'Test MAE: {test_mae}'))
+test_r2 = r2_score(filtered_actual_values, filtered_predicted_values)
+print((f'Test R squared: {test_r2}'))
 
-# Get recommendations for a specific user
-user = 'user1'
-recommendations = get_recommendations(user)
 
+########################################################## average base line model ratings #######################################################
+##################################################################################################################################################
 
+test_collab = collab_df.copy()
+#filtering songs only listened to less than 3 times 
+test_collab['play_count'].mean() # this is 3
+test_collab = test_collab[(test_collab['play_count'] >= 3)]
 
+test_collab.sort_values(by="play_count", ascending=True).head(10)
+test_collab.sort_values(by="total_play_count", ascending=True).head(10)
 
+# only include users that have listened to 10 songs or more 
+user_song_counts = test_collab.groupby('user')['track_id'].nunique()
+user_song_counts.mean() # this is 1
+users_more_than_10_songs = user_song_counts[user_song_counts >=2].index
 
+# Filter the DataFrame to include only users who have listened to more than 10 songs
+test_collab = test_collab[test_collab['user'].isin(users_more_than_10_songs)]
 
+# Show the shape of the new DataFrame to verify
+print("New Shape: ", test_collab.shape)
 
+# Display the first few rows to verify the data
+test_collab.head()
 
+test_collab
 
+# normalise
 
+def min_max_normalize(series):
+    return (series - series.min()) / (series.max() - series.min()) * 4 + 1
 
+# Apply normalization to play_count
+test_collab['rating'] = min_max_normalize(test_collab['play_count'])
 
+test_collab['rating'].plot(kind='hist', bins=1000, figsize=(10, 6))
+plt.show()
 
+# Create a user-item rating matrix
+user_ratings_df = test_collab.pivot(index='user', columns='track_id', values='rating')
 
+# Flatten the DataFrame into a list of (user, track_id, rating) tuples
+ratings = user_ratings_df.stack().reset_index()
+ratings.columns = ['user', 'track_id', 'rating']
 
+# Split into train and test sets
+train_data, test_data = train_test_split(ratings, test_size=0.2, random_state=42)
 
+# Convert train and test sets back to pivot format
+train_df = train_data.pivot(index='user', columns='track_id', values='rating')
+test_df = test_data.pivot(index='user', columns='track_id', values='rating')
 
+# Step 1: Calculate the average rating for each user in the training set
+avg_ratings = train_df.mean(axis=1)
 
+# Create a DataFrame with the average ratings for all items
+predicted_ratings_df = train_df.copy()
+predicted_ratings_df[:] = avg_ratings.values.reshape(-1, 1)
 
+# Extract the ground truth from the test set
+actual_values = test_df.values
 
-track_features_df = pd.merge(track_metadata_cleaned_df, play_count_grouped_df.iloc[:,[1,2]], left_on='song_id', right_on='song').drop('song', axis=1)
-track_features_df = pd.merge(track_features_df, genres_df.iloc[:,[1,2]], how='inner', on='track_id')
-track_features_df = pd.merge(track_features_df, train_triplets_df, how='inner', on='track_id')
-track_features_df.dropna(inplace= True)
+# Reindex the predicted ratings to match the test DataFrame
+predicted_values = predicted_ratings_df.reindex_like(test_df).values
 
-tf_df = track_features_df.copy()
+# Create a mask for non-NaN values in the actual test set
+mask = ~np.isnan(actual_values)
 
-user_matrix = tf_df.pivot_table(index='user_id', 
-                                    columns='title', values='play_count', fill_value=0)
+# Filter out NaN values from both actual and predicted values using the mask
+filtered_actual_values = actual_values[mask]
+filtered_predicted_values = predicted_values[mask]
 
-sparsity = 1.0 - (((user_matrix == 0).sum().sum()) / float(user_matrix.size))
+# Ensure no NaN values remain in the filtered arrays
+filtered_actual_values = filtered_actual_values[~np.isnan(filtered_predicted_values)]
+filtered_predicted_values = filtered_predicted_values[~np.isnan(filtered_predicted_values)]
+
+# Calculate RMSE on the test set, considering only non-NaN values
+test_rmse = mean_squared_error(filtered_actual_values, filtered_predicted_values, squared=False)
+print(f'Test RMSE: {test_rmse}')
+test_mae = mean_absolute_error(filtered_actual_values, filtered_predicted_values)
+print(f'Test MAE: {test_mae}')
+test_r2 = r2_score(filtered_actual_values, filtered_predicted_values)
+print(f'Test R squared: {test_r2}')
+
+
+########################################################## average base line model play count  #######################################################
+###################################################################################################################################################
+test_collab = collab_df.copy()
+#filtering songs only listened to less than 3 times 
+test_collab['play_count'].mean() # this is 3
+test_collab = test_collab[(test_collab['play_count'] >= 3)]
+
+test_collab.sort_values(by="play_count", ascending=True).head(10)
+test_collab.sort_values(by="total_play_count", ascending=True).head(10)
+
+# only include users that have listened to 10 songs or more 
+user_song_counts = test_collab.groupby('user')['track_id'].nunique()
+user_song_counts.mean() # this is 1
+users_more_than_10_songs = user_song_counts[user_song_counts >= 2].index
+
+# Filter the DataFrame to include only users who have listened to more than 10 songs
+test_collab = test_collab[test_collab['user'].isin(users_more_than_10_songs)]
+
+# Show the shape of the new DataFrame to verify
+print("New Shape: ", test_collab.shape)
+
+# Display the first few rows to verify the data
+test_collab.head()
+
+test_collab
+
+# Create a user-item rating matrix
+user_ratings_df = test_collab.pivot(index='user', columns='track_id', values='play_count')
+
+# Flatten the DataFrame into a list of (user, track_id, rating) tuples
+ratings = user_ratings_df.stack().reset_index()
+ratings.columns = ['user', 'track_id', 'play_count']
+
+# Split into train and test sets
+train_data, test_data = train_test_split(ratings, test_size=0.2, random_state=42)
+
+# Convert train and test sets back to pivot format
+train_df = train_data.pivot(index='user', columns='track_id', values='play_count')
+test_df = test_data.pivot(index='user', columns='track_id', values='play_count')
+
+# Step 1: Calculate the average rating for each user in the training set
+avg_ratings = train_df.mean(axis=1)
+
+# Create a DataFrame with the average ratings for all items
+predicted_ratings_df = train_df.copy()
+predicted_ratings_df[:] = avg_ratings.values.reshape(-1, 1)
+
+# Extract the ground truth from the test set
+actual_values = test_df.values
+
+# Reindex the predicted ratings to match the test DataFrame
+predicted_values = predicted_ratings_df.reindex_like(test_df).values
+
+# Create a mask for non-NaN values in the actual test set
+mask = ~np.isnan(actual_values)
+
+# Filter out NaN values from both actual and predicted values using the mask
+filtered_actual_values = actual_values[mask]
+filtered_predicted_values = predicted_values[mask]
+
+# Ensure no NaN values remain in the filtered arrays
+filtered_actual_values = filtered_actual_values[~np.isnan(filtered_predicted_values)]
+filtered_predicted_values = filtered_predicted_values[~np.isnan(filtered_predicted_values)]
+
+# Calculate RMSE on the test set, considering only non-NaN values
+test_rmse = mean_squared_error(filtered_actual_values, filtered_predicted_values, squared=False)
+print(f'Test RMSE: {test_rmse}')
+test_mae = mean_absolute_error(filtered_actual_values, filtered_predicted_values)
+print(f'Test MAE: {test_mae}')
+test_r2 = r2_score(filtered_actual_values, filtered_predicted_values)
+print(f'Test R squared: {test_r2}')
+
+
+
+
+
+
+
+
+
+
+
+
+
 
