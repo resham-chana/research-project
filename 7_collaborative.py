@@ -163,6 +163,51 @@ print(f'Test RMSE: {test_rmse}')
 test_mae = mean_absolute_error(filtered_actual_values, filtered_predicted_values)
 print((f'Test MAE: {test_mae}'))
 
+# Sort the ratings of User 5 from high to low
+user_5_ratings = calc_pred_ratings_df.loc['ffff9de9f9ab522578ff9f1b188def1b7375a68f',:].sort_values(ascending=False)
+
+user_rated_tracks = train_df.loc['ffff9de9f9ab522578ff9f1b188def1b7375a68f',:].dropna().index
+
+print(user_5_ratings)
+
+predicted_ratings = calc_pred_ratings_df.loc['ffff9de9f9ab522578ff9f1b188def1b7375a68f'].drop(user_rated_tracks, errors='ignore')
+
+sorted_predicted_ratings = predicted_ratings.sort_values(ascending=False).head(15)
+
+recommendations_df = pd.merge(sorted_predicted_ratings, collab_df[['track_id', 'total_play_count']],
+                                  on='track_id', how='left').drop_duplicates()
+
+sorted_recommendations = recommendations_df.sort_values(by=['total_play_count'], ascending=True).head(5)
+
+def recommend_tracks(user, train_df, calc_pred_ratings_df, collab_df):
+    #user_ratings = calc_pred_ratings_df.loc[user,:].sort_values(ascending=False)
+    # Step 1: Get all tracks that the user has already rated
+    user_rated_tracks = train_df.loc[user,:].dropna().index
+    # Step 2: Get predicted ratings for tracks the user has not rated
+    predicted_ratings = calc_pred_ratings_df.loc[user].drop(user_rated_tracks, errors='ignore')
+
+    # Step 3: Sort these predictions by rating (descending)
+    sorted_predicted_ratings = predicted_ratings.sort_values(ascending=False).head(15)
+    
+    # join predictions with play count
+    recommendations_df = pd.merge(sorted_predicted_ratings, collab_df[['track_id', 'total_play_count']],
+                                  on='track_id', how='left').drop_duplicates()
+    
+    sorted_recommendations = recommendations_df.sort_values(by=['total_play_count'], ascending=True).head(5)
+
+    # Step 6: Return the top 25 tracks
+    return sorted_recommendations
+
+# Example Usage:
+# Assuming 'collab_df' contains user ratings data
+random_user = train_df.sample(n=1).iloc[0]['user']
+recommendation_collab = recommend_tracks(random_user, train_df, calc_pred_ratings_df, collab_df)
+
+recommendation_collab_with_title = pd.merge(recommendation_collab,track_features_all_df[["title","artist_name","track_id"]],on='track_id', how='left')
+
+
+
+
 ########################################################## average base line model ratings #######################################################
 ##################################################################################################################################################
 
