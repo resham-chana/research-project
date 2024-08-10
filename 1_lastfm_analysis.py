@@ -1,24 +1,16 @@
 # install relevant packages
-import numpy as np
-import matplotlib
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from thefuzz import fuzz
-from thefuzz import process
 from wordcloud import WordCloud
-import seaborn as sns
 import os
 import re
-from sklearn.metrics.pairwise import cosine_similarity
 
 # read processed lastfm tag datasets
 lastfmpath = r"C:\Users\resha\data\lastfm_tags_df.csv"
 pivot_path = r"C:\Users\resha\data\lastfm_pivot_df.csv"
 country_path = r"C:\Users\resha\data\geography_df.csv"
-#lastfmpath = r"C:\Users\corc4\data\lastfm_tags_df.csv"
-#pivot_path = r"C:\Users\corc4\data\lastfm_pivot_df.csv"
-
 lastfm_tags_df = pd.read_csv(lastfmpath)
 lastfm_pivot_df = pd.read_csv(pivot_path)
 
@@ -45,31 +37,35 @@ for label in labels:
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 plt.savefig(r"C:\Users\resha\plots\popular_tags.png")
-#plt.savefig(r"C:\Users\corc4\plots\popular_tags.png")
-
 plt.show()
 
 
 # cleaning tags
 lastfm_tags_df['tag'] = lastfm_tags_df['tag'].astype(str) # string type
-# remove unwanted punctuation and to lowercase
+# remove unwanted punctuation and set to lowercase
 lastfm_tags_df['cleaned_tag'] = lastfm_tags_df['tag'].str.replace(r'[^a-zA-Z0-9\s]', '', regex=True).str.strip().str.lower()
 lastfm_tags_df = lastfm_tags_df[lastfm_tags_df['cleaned_tag'].str.len() > 1] # remove short tags
 unique_tags = lastfm_tags_df['cleaned_tag'].unique()
 
-############################################# fuzzy grouping gender #####################################################
+########## fuzzy grouping gender ##########
 
-# Define the words to match
+# define the words to match for men and women
 female_terms = ['woman', 'female', 'female singer', 'female vocalist', 'female vocal', 'female voice']
 male_terms = ['man', 'male','male singer', 'male vocalist']
 
 def is_standalone_word(word, text):
-    # standalone word if tere are no other letters surrounding it:
+    '''
+    function that returns true or false if a word is not surrounded spaces
+    '''
+    # standalone word if there are no other letters surrounding it:
     pattern = r'\b' + re.escape(word) + r'\b'
     matches = re.findall(pattern, text)
     return bool(matches)
 
 def determine_gender(tag):
+    '''
+    function that determines gender from a tag
+    '''
     # scores for female and male terms
     female_score = 0
     male_score = 0
@@ -121,22 +117,19 @@ for gender in gender_counts.index:
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.title(f'Word Cloud for {gender}')
     plt.axis('off')
-    # Save the word cloud to a file
     wordcloud.to_file(os.path.join(r"C:\Users\resha\plots", f"wordcloud_{gender}.png"))
-    #wordcloud.to_file(os.path.join(r"C:\Users\corc4\plots", f"wordcloud_{gender}.png"))
-
     plt.show()
 
-################################################ fuzzy grouping countries/languages/ethnicities/religion #######################################################
+########## fuzzy grouping countries/languages/ethnicities/religion ##########
 
-# checking if the tags countain different languages:
-#geography_path = r"C:\Users\resha\data\geography_df.csv"
-#geography_df = pd.read_csv(geography_path)
-#geography_path = r"C:\Users\corc4\data\geography_df.csv"
+# read csv
 geography_df = pd.read_csv(country_path)
 
-# function to remove words in bracks
+# function to remove words in brackets
 def clean(s):
+    '''
+    cleans string by remove strings within brackets and notes
+    '''
     # things in brackets
     s = re.sub(r'\(.*?\)', '', s)
     # Remove everything after 'note'
@@ -149,7 +142,7 @@ new_data = pd.DataFrame({
     "nationality": ["brit", "uk", "usa", "scandi"]
 })
 
-
+# clean nationality_df 
 nationality_df = geography_df[['country', 'nationality']].astype(str) # to string
 nationality_df['country'] = nationality_df['country'].apply(clean).str.lower() # to lower
 nationality_df['nationality'] = nationality_df['nationality'].apply(clean).str.lower()  # to lower
@@ -165,7 +158,7 @@ nationality_df = pd.concat([nationality_df, new_data], ignore_index=True) # add 
 # create list of nationalities
 nationalities = list(nationality_df.to_records(index = False))
 
-############################ fuzzy grouping language ##############################
+########## fuzzy grouping language ##########
 
 languages = ["mandarin", "chinese", "spanish", "english", "hindi", "bengali", "portuguese", "russian", "japanese", "vietnamese", 
              "turkish", "marathi", "telugu", "punjabi", "korean", "tamil", "german", "french", "urdu", "arabic", 
@@ -174,7 +167,6 @@ languages = ["mandarin", "chinese", "spanish", "english", "hindi", "bengali", "p
 def determine_language(tag):
     highest_score = 0
     best_match = "NaN"
-    
     # check if any language is a standalone word in the tag
     for language in languages:
         if is_standalone_word(language, tag):
@@ -185,7 +177,6 @@ def determine_language(tag):
         if score > highest_score:
             highest_score = score
             best_match = language
-    
     return best_match if highest_score > 90 else "NaN"
 
 # apply language function
@@ -199,7 +190,7 @@ lastfm_tags_df['language'] = lastfm_tags_df['cleaned_tag'].map(language_mapping)
 lastfm_tags_df.head(50)
 lastfm_tags_df[lastfm_tags_df['language'] != 'NaN']
 
-######################################### fuzzy grouping religion/continents ########################################
+########## fuzzy grouping religion/continents ##########
 
 religions = [("christianity", "christian"),("islam", "muslim"),("hinduism", "hindu"),
              ("buddhism", "buddhist"),("sikhism", "sikh"),("judaism", "jewish"),("bahai","bahais"), ("jainism", "jain"),("shinto", "shintoist"),("cao dai", "caodaism"),
@@ -209,70 +200,64 @@ religions = [("christianity", "christian"),("islam", "muslim"),("hinduism", "hin
 continents = [("asia","asian"),("north america","american"),("south america","latin"),("europe","european"),("australia","aussie"),("africa","african")]
 
 def determine_geo(tag, tuples):
-    # List of standalone words to exclude
-    # Regular expression to check if 'oman' is not surrounded by letters (i.e., it's a standalone word)
-    def is_standalone_word(word, text):
-        # Check for exact match
-        pattern = r'\b' + re.escape(word) + r'\b'
-        matches = re.findall(pattern, text)
-        if matches:
-            return bool(matches)
+    '''
+    function that outputs a best match for a religion or continent
+    '''
     for geo, alternative_name in tuples:
         # Regular expression to check if 'oman' is not surrounded by letters
  #       if geo in tag or alternative_name in tag:
         if is_standalone_word(geo, tag) or is_standalone_word(alternative_name,tag):
             return geo
-
-        # Calculate scores for both geo and its alternative name
+        # calculate fuzzy match score
         score_geo = fuzz.ratio(tag, geo)
         score_alternative = fuzz.ratio(tag, alternative_name)
         highest_score = 0
-        # Determine the highest score and the best match
+        # match to the highest score
         if score_geo > highest_score:
             highest_score = score_geo
             best_match = geo
         if score_alternative > highest_score:
             highest_score = score_alternative
             best_match = alternative_name
-    
     return best_match if highest_score > 90 else "NaN"
 
-# Group by cleaned_tag and apply the religion determination function
+# apply the determine geo function
 unique_tags = lastfm_tags_df['cleaned_tag'].unique()
 religion_mapping = {tag: determine_geo(tag,religions) for tag in unique_tags}
 continent_mapping = {tag: determine_geo(tag,continents) for tag in unique_tags}
 nationality_mapping = {tag: determine_geo(tag,nationalities) for tag in unique_tags}
 
-# Map the gender back to the original DataFrame
+# map the gender back to the original DataFrame
 lastfm_tags_df['religion'] = lastfm_tags_df['cleaned_tag'].map(religion_mapping)
 lastfm_tags_df['continent'] = lastfm_tags_df['cleaned_tag'].map(continent_mapping)
 lastfm_tags_df['nationalities'] = lastfm_tags_df['cleaned_tag'].map(nationality_mapping)
 
-# Display the DataFrame
+# display data frame
 lastfm_tags_df.head(50)
 lastfm_tags_df[lastfm_tags_df['religion'] != 'NaN']
 lastfm_tags_df[lastfm_tags_df['continent'] != 'NaN']
 lastfm_tags_df[lastfm_tags_df['nationalities'] != 'NaN']
 
+# rename dataframe
 lastfm_diverse_tags_df = lastfm_tags_df
 
-#lastfm_diverse_tags_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_tags_df.csv")
-
 # clean up indexing
-#lastfm_diverse_tags_df = lastfm_diverse_tags_df.drop(columns=['Unnamed: 0.1', 'Unnamed: 0'])
 lastfm_diverse_tags_df = lastfm_diverse_tags_df.drop(columns=['Unnamed: 0'])
 
 # fill gender/language/religion/continent/nationality for the same tracks
 def fill_diverse(df, column):
+    '''
+    function to duplicate columns
+    '''
     non_nan_values = df.loc[df[column].notna(), ['tid', column]]
     duplicated_values = non_nan_values.set_index('tid')[column].to_dict()
     df.loc[:, column] = df['tid'].map(duplicated_values).combine_first(df[column])
     return df
 
-# List of columns to duplicate values for
+# list of columns to duplicate values for
 columns_to_duplicate = ['language', 'religion', 'continent', 'nationalities']
 
-# Apply duplication function to each specified column
+# apply fuction to each col
 for column in columns_to_duplicate:
     df = fill_diverse(lastfm_diverse_tags_df, column)
 
@@ -290,14 +275,13 @@ lastfm_diverse_tags_df.loc[:, 'tag_number'] = lastfm_diverse_tags_df.groupby('ti
 lastfm_diverse_pivot_df = lastfm_diverse_tags_df.pivot(index='tid', columns='tag_number', values='tag').reset_index()
 lastfm_diverse_pivot_df.columns = ['tid'] + [f'tag{i}' for i in range(1, len(lastfm_diverse_pivot_df.columns))]
 
-# Merge the additional columns back to the pivoted DataFrame
+# merge dataframes together
 lastfm_diverse_pivot_df = pd.merge(lastfm_diverse_pivot_df, 
                                    lastfm_diverse_tags_df[['tid', 'gender', 'language', 'religion', 'continent', 'nationalities']].drop_duplicates(subset=['tid'])
                                    , on='tid', how='left')
 
 
-#lastfm_diverse_tags_df.to_csv(r"C:\Users\corc4\data\lastfm_diverse_tags_df.csv")  
-#lastfm_diverse_pivot_df.to_csv(r"C:\Users\corc4\data\lastfm_diverse_pivot_df.csv")  
+# write to csv
 lastfm_diverse_tags_df.to_csv(r"C:\Users\resha\data\lastfm_diverse_tags_df.csv")  
 lastfm_diverse_pivot_df.to_csv(r"C:\Users\resha\data\lastfm_diverse_pivot_df.csv")  
 

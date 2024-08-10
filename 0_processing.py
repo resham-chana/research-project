@@ -65,6 +65,9 @@ images_df.to_csv(r"C:\Users\resha\data\images_df.csv")
 
 # Function to download an image from a URL
 def download_image(url, path):
+    '''
+    Funtion to download images from a URL
+    '''
     try:
         response = requests.get(url, stream=True, timeout=10)  
         response.raise_for_status()  
@@ -82,10 +85,10 @@ def download_image(url, path):
     except Exception as e:
         print(f"error: {e}")
 
-# Base directory for the images 
+# base directory for the images 
 base_dir = 'C:\Users\resha\images'
 
-# Set to keep track of downloaded URLs
+# keep track of downloaded URLs
 downloaded_urls = set()
 
 # iterate through the dataset and download images
@@ -100,7 +103,6 @@ for index, row in images_df.iterrows():
     # create directory
     dir_path = Path(base_dir) / set_name / genre
     dir_path.mkdir(parents=True, exist_ok=True)
-    # Define the image path
     image_path = dir_path / f"{row['msd_track_id']}.jpg"    
     download_image(url, image_path)
     downloaded_urls.add(url)
