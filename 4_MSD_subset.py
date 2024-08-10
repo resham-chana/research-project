@@ -1,10 +1,10 @@
 import pandas as pd
-import tables  # Assuming pytables is used
+import tables  
 
+# code from [https://github.com/tbertinmahieux/MSongsDB]
 """
 Thierry Bertin-Mahieux (2010) Columbia University
 tb2332@columbia.edu
-
 
 This code contains a set of getters functions to access the fields
 from an HDF5 song file (regular file with one song or
@@ -31,15 +31,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 
-import tables
-
-
 def open_h5_file_read(h5filename):
     """
     Open an existing H5 file in read mode.
     """
-    return tables.open_file(h5filename, mode='r')  # Use tables.open_file to open the HDF5 file
-
+    return tables.open_file(h5filename, mode='r')  
 
 
 def get_num_songs(h5):
@@ -613,12 +609,11 @@ def process_all_h5_files(base_directory):
                 df = h5_to_dataframe(file_path)
                 all_data.append(df)
     
-    # Concatenate all DataFrames
     combined_df = pd.concat(all_data, ignore_index=True)
     return combined_df
 
-# Example usage
+
 base_directory = r'C:\Users\resha\data\millionsongsubset'
 combined_df = process_all_h5_files(base_directory)
-
+# read in every column and set to csv
 combined_df.to_csv(r"C:\Users\resha\data\MSD_subset.csv")  

@@ -1,32 +1,33 @@
+# import relevant libraries 
 import pandas as pd
 import re
 import numpy as np
 import plotly.express as px
 import country_converter as coco
-import kaleido
-from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut
 
+# read in data used
 train_triplets_df = pd.read_csv(r"C:\Users\resha\data\train_triplets_df.csv")
 MSD_df = pd.read_csv(r"C:\Users\resha\data\MSD_subset.csv")
 play_count_grouped_df = pd.read_csv(r"C:\Users\resha\data\play_count_grouped_df.csv")
 genres_df = pd.read_csv(r"C:\Users\resha\data\genres_df.csv")
 lastfm_diverse_pivot_df = pd.read_csv(r"C:\Users\resha\data\lastfm_diverse_pivot_df.csv")
 geography_df = pd.read_csv(r"C:\Users\resha\data\geography_df.csv")
-# Define a function to decode bytes
 
+# define a regex to match byte types
 pattern = re.compile(r"b'(.*?)'")
 
-# Function to apply regex and extract matched content if present
 def extract_if_bytes(x):
+    '''
+    Function to return the conent inside a byte string
+    '''
     if isinstance(x, str):
-        # Apply regex to extract content if pattern matches
+        # if pattern matches string return the content 
         match = pattern.search(x)
         if match:
-            return match.group(1)  # Return the first matched group (content inside b'')
-    return x  # Return unchanged if no match or not a string
+            return match.group(1) 
+    return x  
 
-# Apply regex to each column where dtype is object
+# apply function to song_id and track_id
 for col in ['song_id', 'track_id']:
     if col in MSD_df.columns:
         MSD_df[col] = MSD_df[col].apply(extract_if_bytes)
@@ -35,11 +36,12 @@ MSD_df["artist_location"].nunique()
 
 unique_artist_locations = MSD_df["artist_location"].unique()
 
-# Print all unique artist locations
+# print all unique artist locations
 print("Unique artist locations:")
 for location in unique_artist_locations:
     print(location)
 
+# states from [https://www.drupal.org/node/332575]
 states = [('Alabama', 'AL'),('Kentucky', 'KY'),('Ohio', 'OH'),('Alaska', 'AK'), ('Louisiana', 'LA'),('Oklahoma', 'OK'), ('Arizona', 'AZ'),('Maine', 'ME')
  ,('Oregon', 'OR'),('Arkansas', 'AR'),('Maryland', 'MD'),('Pennsylvania', 'PA'),('American Samoa', 'AS'),
  ('Massachusetts', 'MA'),('Puerto Rico', 'PR'),('California', 'CA'),('Michigan', 'MI'),('Rhode Island', 'RI'),('Colorado', 'CO'), ('Minnesota', 'MN'),('South Carolina', 'SC'),
@@ -50,10 +52,13 @@ states = [('Alabama', 'AL'),('Kentucky', 'KY'),('Ohio', 'OH'),('Alaska', 'AK'), 
  ('Wyoming', 'WY')
 ]
 
+# take countries from cia factbook dataset
 countries = geography_df["country"]
 
 
 def determine_geo_msd(tag, states, countries):
+    '''
+    function to '''
     def space_front_word(word, text):
         pattern = r'\b' + re.escape(word) + r'\b'
         return bool(re.search(pattern, text, re.IGNORECASE))
