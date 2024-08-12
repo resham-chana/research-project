@@ -12,7 +12,6 @@ train_triplets_df = pd.read_csv(r"C:\Users\resha\data\train_triplets_df.csv")
 track_features_all_df = pd.read_csv(r"C:\Users\resha\data\track_features_all_df.csv")
 content_df = pd.read_csv(r"C:\Users\resha\data\content_df.csv")
 
-
 # create new dataframe including triplets
 collab_df = pd.merge(content_df, train_triplets_df, left_on="song_id", right_on="song", how="left")
 collab_df = collab_df.dropna(subset=['user'])
@@ -100,7 +99,7 @@ user_ratings_centered_train_df.fillna(0, inplace=True)
 # convert to sparse matrix
 user_ratings_sparse = sp.csr_matrix(user_ratings_centered_train_df.values)
 
-# perform SVD matrix factorization 
+# perform SVD matrix factorisation 
 U, sigma, Vt = svds(user_ratings_sparse)
 sigma = np.diag(sigma)
 
@@ -110,7 +109,7 @@ U_sigma_Vt = np.dot(np.dot(U, sigma), Vt)
 # add average ratings back
 uncentered_ratings = U_sigma_Vt + avg_ratings.values.reshape(-1, 1)
 
-# predict ratings with uncentered_ratings dataframe
+# predict ratings with uncentered_ratings df
 calc_pred_ratings_df = pd.DataFrame(uncentered_ratings, 
                                     index=train_df.index, 
                                     columns=train_df.columns)
@@ -161,7 +160,6 @@ recommendations_df = pd.merge(sorted_predicted_ratings, collab_df[['track_id', '
 
 # get recs with lower play count
 sorted_recommendations = recommendations_df.sort_values(by=['total_play_count'], ascending=True).head(5)
-
 
 def recommend_tracks(user, train_df, calc_pred_ratings_df, collab_df):
     '''
