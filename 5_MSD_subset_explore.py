@@ -58,46 +58,46 @@ countries = geography_df["country"]
 
 def determine_geo_msd(tag, states, countries):
     '''
-    function to '''
+    function to 
+    determine a country from a tag
+    '''
     def space_front_word(word, text):
+        '''
+        helper function to check if a word is not a substring of another word
+        '''
         pattern = r'\b' + re.escape(word) + r'\b'
         return bool(re.search(pattern, text, re.IGNORECASE))
-
-    # Check if 'England' is in the tag
     if 'england' in tag.lower() or 'wales' in tag.lower() or 'scotland' in tag.lower():
         return "United Kingdom"
-
-    # Check against states first
     for state, abbreviation in states:
         if space_front_word(state, tag) or space_front_word(abbreviation, tag):
-            return "United States"
-
-    # Check against countries
+            return "United States" # return united states if the tag is a state
     for country in countries:
         if space_front_word(country, tag):
             return country
 
     return None
 
-# Applying the function to the DataFrame
+# apply function to the MSD_df
 unique_locations = MSD_df["artist_location"].unique()
 country_mapping = {tag: determine_geo_msd(tag, states, countries) for tag in unique_locations}
-# Map the country back to the original DataFrame
 MSD_df['country'] = MSD_df['artist_location'].map(country_mapping)
-
-# Print the specified columns
 print(MSD_df[['country', 'artist_location']]).drop_duplicates()
 
+# create a new df of mismatches
 none_in_country = MSD_df[MSD_df['country'].isnull()]
 missing_countries = none_in_country.drop_duplicates(subset=['artist_location'])[['artist_location', 'country']]
+# save to csv
 missing_countries.to_csv(r"C:\Users\resha\data\missing_countries_df.csv")
 missing_countries_match = pd.read_csv(r"C:\Users\resha\data\missing_countries_match_df.csv")
 
+# deal with encoding issues by trying both utf-8 and latin1
 try:
     missing_countries_match = pd.read_csv(r"C:\Users\resha\data\missing_countries_match_df.csv", encoding='utf-8')
 except UnicodeDecodeError:
     missing_countries_match = pd.read_csv(r"C:\Users\resha\data\missing_countries_match_df.csv", encoding='latin1')
 
+# create a dictionary for country and artist location and fill NAs in MSD_df
 location_to_country_dict = missing_countries_match.set_index('artist_location')['country'].to_dict()
 MSD_df['country'] = MSD_df['country'].fillna(MSD_df['artist_location'].map(location_to_country_dict))
 
@@ -114,24 +114,21 @@ MSD_grouped_df = MSD_grouped_df.dropna(subset="country")
 
 MSD_grouped_df['iso_alpha_3'] = coco.convert(names=MSD_grouped_df['country'], to='ISO3')
 MSD_grouped_df = MSD_grouped_df[['log_total_play_count', 'iso_alpha_3',"country"]]
-#unique_nationalities = MSD_grouped_df['country'].unique()
 
-
-
-# Create basic choropleth map
+# visualise log play count and country with a world map
 fig = px.choropleth(
     MSD_grouped_df,
     locations='iso_alpha_3',
     color='log_total_play_count',
     color_continuous_scale='viridis',  
-    template="plotly_dark",# Color scale
+    template="plotly_dark",
     title='Total Log Play Count by Country',
     labels={'log_total_play_count': 'Total Play Count'},
-    hover_name='country'  # Show country names on hover
+    hover_name='country'  
 )
 fig.write_image("log_total_play_count_map.png")
 fig.show()
 
+# merge MSD subset with genre for potential analysis
 MSD_merged_df= pd.merge(MSD_merged_df, genres_df.iloc[:,[1,2]], how='inner', on='track_id')
-
 MSD_merged_df.to_csv(r"C:\Users\resha\data\MSD_merged_df.csv")
