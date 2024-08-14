@@ -1,5 +1,4 @@
 # import relevant libraries
-
 import matplotlib.pyplot as plt
 import numpy as np
 import setuptools.dist
@@ -82,37 +81,6 @@ def preprocess_images(dataset):
     return np.array(images), np.array(labels)
 
 # Preprocess training images
-#train_images, train_labels = preprocess_images(train_dataset)
-
-# Perform PCA or t-SNE for dimensionality reduction
-def plot_embedding(X, y, title=None):
-    plt.figure(figsize=(10, 10))
-    genres = np.unique(y)
-    for genre in genres:
-        plt.scatter(X[y == genre, 0], X[y == genre, 1], label=class_names[genre], alpha=0.7)
-    plt.legend()
-    if title is not None:
-        plt.title(title)
-    plt.show()
-
-# Create 15 different plots for each genre using PCA or t-SNE
-for genre_idx in range(15):
-    genre_images = train_images[train_labels == genre_idx]
-    if len(genre_images) < 2:  # Skip if there aren't enough images
-        continue
-    if genre_images.shape[0] > 50:
-        genre_images = genre_images[:50]  # Limit to 50 images for faster computation
-
-    # PCA
-    pca = PCA(n_components=2)
-    pca_result = pca.fit_transform(genre_images)
-    plot_embedding(pca_result, np.array([genre_idx] * len(genre_images)), 
-                   title=f"PCA for {class_names[genre_idx]}")
-
-
-# print number of batches within each set
-print('Number of validation batches: %d' % tf.data.experimental.cardinality(val_dataset))
-print('Number of test batches: %d' % tf.data.experimental.cardinality(test_dataset))
 
 # using buffered prefetching 
 AUTOTUNE = tf.data.AUTOTUNE
@@ -201,7 +169,7 @@ val_loss = history.history['val_loss']
 # plotting these across epochs
 plt.figure(figsize=(8, 8))
 plt.subplot(2, 1, 1)
-plt.plot(acc, label='Training Accuracy')
+plt.plot(acc, label='Training Accuracy',color="red")
 plt.plot(val_acc, label='Validation Accuracy')
 plt.legend(loc='lower right')
 plt.ylabel('Accuracy')
@@ -209,22 +177,22 @@ plt.ylim([min(plt.ylim()),0.5])
 plt.title('Training and Validation Accuracy')
 
 plt.subplot(2, 1, 2)
-plt.plot(loss, label='Training Loss')
+plt.plot(loss, label='Training Loss', color="red")
 plt.plot(val_loss, label='Validation Loss')
 plt.legend(loc='upper right')
 plt.ylabel('Cross Entropy')
 plt.ylim([0,3])
 plt.title('Training and Validation Loss')
 plt.xlabel('epoch')
-plt.savefig("test_and_training")
+plt.savefig("test_and_training1.png")
 plt.show()
 
 loss, accuracy = model.evaluate(val_dataset)
 print("Validation loss: {:.2f}".format(loss))
 print("Validation accuracy: {:.2f}".format(accuracy))
 
-#Validation loss: 2.30
-#Validation accuracy: 0.26
+#Validation loss: 2.26
+#Validation accuracy: 0.28
 
 ########### Fine Tuning ##########
 
@@ -285,6 +253,7 @@ plt.title('Training and Validation Loss')
 plt.xlabel('epoch')
 plt.show()
 
+#plt.savefig("fine_tune")
 # print final test accuracy
 loss, accuracy = model.evaluate(test_dataset)
 print('Test accuracy:', accuracy)
