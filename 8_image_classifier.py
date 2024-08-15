@@ -115,6 +115,10 @@ global_average_layer = tf.keras.layers.GlobalAveragePooling2D()
 feature_batch_average = global_average_layer(feature_batch)
 print(feature_batch_average.shape)
 
+#global_max_layer = tf.keras.layers.GlobalMaxPooling2D()
+#feature_batch_max = global_max_layer(feature_batch)
+#print(feature_batch_max.shape)
+
 prediction_layer = tf.keras.layers.Dense(15, activation='softmax')
 # pass features through the output layer
 prediction_batch = prediction_layer(feature_batch_average)
@@ -314,139 +318,6 @@ plt.title('Confusion Matrix')
 plt.show()
 
 # calculate f1 score 
-
-beta = 1  
-fbeta = fbeta_score(all_true_classes, all_predicted_classes, beta=beta, average='weighted')
-print("F1 score: {:.4f}".format(fbeta))
-
-########## Build Model ##########
-
-# code adapted from: [https://www.tensorflow.org/tutorials/images/classification]
-
-# grab the shape of the images in the dataset
-for image_batch, labels_batch in train_dataset:
-  print(image_batch.shape)
-  print(labels_batch.shape)
-  break
-
-
-# Initialise Model
-num_classes = len(class_names)
-
-model = Sequential([
-    layers.Rescaling(1./255, input_shape=(image_batch.shape[1], 
-                                          image_batch.shape[2], 3)),
-    tf.keras.layers.RandomFlip('horizontal'), 
-    layers.Conv2D(16, 3, padding='same', activation='relu'),
-    layers.MaxPooling2D(),
-    layers.Conv2D(32, 3, padding='same', activation='relu'),
-    layers.MaxPooling2D(),
-    layers.Conv2D(64, 3, padding='same', activation='relu'),
-    layers.MaxPooling2D(),
-    #layers.Conv2D(128, 3, padding='same', activation='relu'), 
-    layers.MaxPooling2D(),
-    layers.Flatten(),
-    layers.Dropout(0.2),
-    layers.Dense(128, activation='relu'),
-    layers.Dense(64, activation='relu'),
-    layers.Dense(num_classes)
-])
-
-# compile model
-model.compile(optimizer='adam',
-              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-              metrics=['accuracy'])
-
-model.summary()
-
-# set the number of epochs and begin training the model
-epochs=10
-history = model.fit(
-  train_dataset,
-  validation_data=val_dataset,
-  epochs=epochs
-)
-
-# print test accuracy
-loss, accuracy = model.evaluate(test_dataset)
-print('Test accuracy:', accuracy)
-
-
-# extract accuracy and loss from model
-acc = history.history['accuracy']
-val_acc = history.history['val_accuracy']
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-
-epochs_range = range(epochs)
-
-# plot this across epochs
-plt.figure(figsize=(8, 8))
-plt.subplot(1, 2, 1)
-plt.plot(epochs_range, acc, label='Training Accuracy')
-plt.plot(epochs_range, val_acc, label='Validation Accuracy')
-plt.legend(loc='lower right')
-plt.title('Training and Validation Accuracy')
-
-plt.subplot(1, 2, 2)
-plt.plot(epochs_range, loss, label='Training Loss')
-plt.plot(epochs_range, val_loss, label='Validation Loss')
-plt.legend(loc='upper right')
-plt.title('Training and Validation Loss')
-plt.show()
-
-
-# test one new images:
-
-# get images from test set
-image_batch, label_batch = test_dataset.as_numpy_iterator().next()
-predictions = model.predict_on_batch(image_batch)
-
-# change to probability
-predictions = tf.nn.softmax(predictions)
-predicted_classes = tf.argmax(predictions, axis=1)
-
-print('Predicted Classes:\n', predicted_classes.numpy())
-print('True Classes:\n', label_batch)
-
-# plot 
-plt.figure(figsize=(10, 10))
-for i in range(9):
-    ax = plt.subplot(3, 3, i + 1)
-    plt.imshow(image_batch[i].astype("uint8"))
-    plt.title(class_names[predicted_classes[i]])  # Use predicted class index to get class name
-    plt.axis("off")
-plt.show()
-
-# Compute confusion matrix:
-
-all_predicted_classes = []
-all_true_classes = []
-
-# iterate over batches in test dataset
-for image_batch, label_batch in test_dataset.as_numpy_iterator():
-    predictions = model.predict_on_batch(image_batch)
-    
-    predictions = tf.nn.softmax(predictions)
-    predicted_classes = np.argmax(predictions, axis=1)
-    
-    all_predicted_classes.extend(predicted_classes)
-    all_true_classes.extend(label_batch)
-
-    conf_matrix = confusion_matrix(all_true_classes, all_predicted_classes)
-
-# Print the confusion matrix
-print("Confusion Matrix:")
-print(conf_matrix)
-
-# Plot the confusion matrix 
-plt.figure(figsize=(10, 8))
-plt.imshow(conf_matrix, cmap='viridis', interpolation='nearest')
-plt.colorbar()
-plt.xlabel('Predicted')
-plt.ylabel('True')
-plt.title('Confusion Matrix')
-plt.show()
 
 beta = 1  
 fbeta = fbeta_score(all_true_classes, all_predicted_classes, beta=beta, average='weighted')
