@@ -179,7 +179,9 @@ def recommend_tracks(user, train_df, calc_pred_ratings_df, collab_df):
     return sorted_recommendations
 
 # take a random user and apply the function
-random_user = train_df.sample(n=1).iloc[0]['user']
+random_user = train_df.sample(n=1).index[0]
+random_user_rated_tracks = train_df.loc[random_user,:].dropna()
+random_user_rated_tracks_with_title = pd.merge(random_user_rated_tracks,track_features_all_df[["title","artist_name","track_id"]],on='track_id', how='left')
 recommendation_collab = recommend_tracks(random_user, train_df, calc_pred_ratings_df, collab_df)
 
 recommendation_collab_with_title = pd.merge(recommendation_collab,track_features_all_df[["title","artist_name","track_id"]],on='track_id', how='left')

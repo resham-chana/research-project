@@ -120,7 +120,8 @@ song = content_df[content_df['track_id'] == track_id][["title","artist_name"]]
 
 # apply the recommender
 recommendations_tdidf = pd.merge(get_recommendations_tdidf(track_id),
-                           content_df[['track_id', 'title','country', 'artist_name' ,'gender', 'language',
+                           content_df[['track_id', 'title', 'artist_name' ,
+                                       'country','gender', 'language',
                                         'religion', 'continent', 'genre','total_play_count','decade']], 
                            how = "left",on = "track_id")
 print(recommendations_tdidf)
@@ -262,7 +263,7 @@ song = content_df[content_df['track_id'] == track_id][["title","artist_name"]]
 
 # apply recommendation algoithm to it
 recommendations_kmeans = pd.merge(get_recommendations_kmeans(track_id),
-                           content_df[['track_id', 'title','country', 'artist_name' ,'gender', 'language',
+                           content_df[['track_id', 'title', 'artist_name' , 'country','gender', 'language',
                                         'religion', 'continent', 'genre','total_play_count','decade']], 
                            how = "left",on = "track_id")
 print(recommendations_kmeans)
